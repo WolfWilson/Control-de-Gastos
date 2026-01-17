@@ -4,156 +4,802 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Progressive Web App (PWA) for personal expense tracking. Mobile-first architecture, modular design, Spanish language for database/backend, English for code identifiers.
+**Progressive Web App (PWA)** for personal expense tracking - **100% offline-first architecture**.
 
-**Stack**: FastAPI + SQLAlchemy + SQLite (backend), Vanilla JS + CSS3 + HTML5 (frontend)
+The app runs entirely in the browser with no backend server. All data is stored locally using IndexedDB. Mobile-first design with modern UI (glassmorphism, animations) and WCAG AA accessibility compliance.
+
+**Stack**: Vanilla JavaScript ES6+ modules, CSS3 Custom Properties, HTML5, IndexedDB, Service Worker
+
+**Language**: Spanish for UI text and user-facing content, English for code identifiers and technical documentation.
 
 ## Project Structure
 
-The project follows a clear separation between backend and frontend:
-
 ```
-backend/
-  app/
-    models/          # SQLAlchemy models (DB tables: gastos, categorias)
-    schemas/         # Pydantic validation schemas
-    repositories/    # Data access layer
-    services/        # Business logic (orchestration)
-    routers/         # API endpoints
-    utils/           # Custom exceptions, helpers
-  tests/             # pytest tests
-
 frontend/
-  css/               # variables.css, base.css, layout.css, components.css
-  js/                # app.js (main), api.js (fetch), utils.js (formatters)
-  assets/icons/      # PWA icons
-  index.html         # Single page app entry
-  manifest.json      # PWA manifest
-  sw.js              # Service worker
+├── index.html              # Single Page Application entry point
+├── manifest.json          # PWA manifest (icons, theme, shortcuts)
+├── sw.js                  # Service Worker (cache strategies)
+│
+├── css/
+│   ├── variables.css      # Design system (colors, spacing, typography, glassmorphism)
+│   ├── base.css          # CSS reset, base styles, utility classes
+│   ├── layout.css        # Layouts, containers, responsive grids
+│   ├── components.css    # All UI components (cards, buttons, forms, modals, etc.)
+│   ├── animations.css    # Keyframe animations and transitions
+│   ├── auth-tabs.css     # Authentication tabs (login/register switcher)
+│   ├── user-menu.css     # Side drawer menu and user profile styles
+│   └── debug-contrast.css # Accessibility debugging (WCAG AA contrast checker)
+│
+└── js/
+    ├── app.js            # Main application class (ExpenseApp)
+    ├── db.js             # IndexedDB manager (DatabaseManager)
+    ├── auth.js           # Authentication manager (AuthManager)
+    ├── utils.js          # Utility functions (formatters, notifications)
+    ├── toast.js          # Toast notification system (ToastManager)
+    ├── confirm-dialog.js # Custom confirmation dialogs (ConfirmDialog)
+    └── data-backup.js    # Export/import functionality (DataBackup)
 ```
+
+**Note**: There is NO backend directory. The original FastAPI backend was completely removed and replaced with IndexedDB for offline-first functionality.
 
 ## Architecture Patterns
 
-**Backend follows layered architecture**:
-- **Models** (SQLAlchemy): DB table definitions with Spanish column names (`monto`, `descripcion`, `categoria_id`, `fecha_creacion`)
-- **Schemas** (Pydantic): Request/response validation with English class names (`ExpenseCreate`, `ExpenseResponse`)
-- **Repositories**: Database operations only (`save()`, `find_by_id()`)
-- **Services**: Business logic orchestration, uses repositories
-- **Routers**: HTTP endpoints, thin layer that delegates to services
+### Offline-First Architecture
 
-**Dependency Injection**: Use FastAPI's `Depends()` for database sessions and service instances.
+**Client-Side Only**: All code runs in the browser
+- No HTTP requests to backend servers
+- No API endpoints or REST calls
+- All data operations via IndexedDB
+- Service Worker provides offline caching
 
-**SOLID Principles**: Single Responsibility is critical - repositories handle data, validators handle rules, services orchestrate.
+**Data Storage**:
+- **IndexedDB**: Primary storage for expenses and categories
+- **LocalStorage**: Authentication data only (user name + PIN)
+- **Cache API**: Static assets via Service Worker
+
+### Module Organization
+
+**ES6+ Modules**: All JavaScript uses native browser modules
+```javascript
+// Import pattern
+import db from './db.js';
+import auth from './auth.js';
+import { formatCurrency, showError } from './utils.js';
+
+// Export pattern
+export default class MyClass { }
+export const myFunction = () => { };
+```
+
+**Singleton Pattern**: Database and Auth managers are singletons
+```javascript
+// db.js
+const db = new DatabaseManager();
+export default db;
+
+// auth.js
+const auth = new AuthManager();
+export default auth;
+```
+
+**Class-Based**: Main logic in ES6 classes
+- `ExpenseApp` - Application controller
+- `DatabaseManager` - IndexedDB operations
+- `AuthManager` - Authentication logic
+- `ToastManager` - UI notifications
+- `ConfirmDialog` - Modal dialogs
+- `DataBackup` - Import/export
+
+### Dependency Injection
+
+**No formal DI container**, but follows pattern:
+```javascript
+// app.js uses imported singletons
+import db from './db.js';
+import auth from './auth.js';
+
+// Instead of instantiating directly
+async loadExpenses() {
+  this.expenses = await db.getRecentExpenses(10);
+}
+```
+
+### Event Handling
+
+**Event Delegation**: Used for dynamic content
+```javascript
+// Attach listeners to parent, filter by target
+container.addEventListener('click', (e) => {
+  if (e.target.dataset.action === 'edit') {
+    this.handleEdit(e.target.dataset.id);
+  }
+});
+```
+
+**Direct Listeners**: For static elements
+```javascript
+this.elements.addExpenseBtn.addEventListener('click', () => this.openModal());
+```
 
 ## Naming Conventions
 
-**Database** (Spanish, snake_case):
-- Tables: Plural (`gastos`, `categorias`, `suscripciones`)
-- Columns: Singular (`monto`, `descripcion`, `fecha_creacion`)
-- PKs: Always `id` (INTEGER AUTOINCREMENT)
-- FKs: `{tabla_singular}_id` (`categoria_id`, `usuario_id`)
-- Timestamps: `fecha_creacion`, `fecha_actualizacion` (DATETIME UTC)
+### Database Layer (IndexedDB)
 
-**Python** (English, PEP 8):
-- Classes: `PascalCase` (`ExpenseService`, `ExpenseRepository`)
-- Functions: `snake_case` with verbs (`create_expense`, `get_expenses_by_month`)
-- Variables: `snake_case` (`expense_data`, `monthly_total`)
-- Constants: `UPPER_SNAKE_CASE` (`DATABASE_URL`, `MAX_DESCRIPTION_LENGTH`)
-- **Type hints are mandatory** on all functions
+**Object Stores** (Spanish, camelCase in code):
+- `expenses` - Store name
+- `categories` - Store name
 
-**Frontend**:
-- CSS: BEM-like naming, mobile-first (base styles for 320px+, media queries for 768px+, 1024px+)
-- JavaScript: `camelCase` for functions/variables, ES6+ modules
+**Fields** (Spanish, snake_case for consistency with original schema):
+- `id` - Auto-increment primary key
+- `monto` - Amount (number)
+- `descripcion` - Description (string)
+- `categoria_id` - Foreign key to categories
+- `fecha` - Date (YYYY-MM-DD string)
+- `notas` - Notes (string | null)
+- `fecha_creacion` - Created timestamp (ISO 8601)
+- `fecha_actualizacion` - Updated timestamp (ISO 8601 | null)
 
-## Database Schema
+**Indexes**:
+- Primary keys: Always `id`
+- Foreign keys: `{entity}_id` pattern
+- Date indexes: For efficient range queries
 
-**categorias**:
-- 7 predefined categories with emoji icons and hex colors
-- Fields: `id`, `nombre`, `icono`, `color`, `activo`, `fecha_creacion`
+### JavaScript (English, PEP-8 style adapted to JS)
 
-**gastos**:
-- Core expense tracking table
-- Fields: `id`, `monto` (REAL, must be > 0), `descripcion`, `categoria_id` (FK), `fecha` (DATE), `notas` (TEXT), `fecha_creacion`, `fecha_actualizacion`
-- Indexes on: `fecha DESC`, `categoria_id`, `fecha_creacion DESC`
+**Classes**: `PascalCase`
+```javascript
+class ExpenseApp { }
+class DatabaseManager { }
+class AuthManager { }
+```
+
+**Functions/Methods**: `camelCase` with verbs
+```javascript
+async createExpense(data) { }
+async getMonthlySummary(year, month) { }
+handleSubmit(event) { }
+```
+
+**Variables**: `camelCase`, descriptive
+```javascript
+const expenseData = { };
+const monthlyTotal = 0;
+const currentEditId = null;
+```
+
+**Constants**: `UPPER_SNAKE_CASE`
+```javascript
+const DB_NAME = 'ExpenseTrackerDB';
+const DB_VERSION = 1;
+const AUTH_KEY = 'expense_tracker_user';
+```
+
+**Private-ish members**: Prefix with `_` (convention only, not enforced)
+```javascript
+_initDatabase() { }  // "Private" method
+```
+
+**Type Annotations**: Use JSDoc for complex structures
+```javascript
+/**
+ * @param {Object} expenseData
+ * @param {number} expenseData.monto
+ * @param {string} expenseData.descripcion
+ * @param {number} expenseData.categoria_id
+ * @returns {Promise<Object>}
+ */
+async createExpense(expenseData) { }
+```
+
+### CSS (BEM-like naming)
+
+**Block**: Component name
+```css
+.expense-item { }
+.summary-card { }
+.modal-overlay { }
+```
+
+**Element**: Child element (double underscore)
+```css
+.expense-item__description { }
+.summary-card__title { }
+```
+
+**Modifier**: Variant (double dash)
+```css
+.btn--primary { }
+.toast--error { }
+.modal--danger { }
+```
+
+**State classes**: Prefix with `is-` or direct
+```css
+.active { }
+.hidden { }
+.is-loading { }
+```
+
+**Utility classes**: Descriptive, single purpose
+```css
+.text-center { }
+.mt-4 { }
+.flex-between { }
+```
+
+### File Naming
+
+- `kebab-case.js` for multi-word modules: `confirm-dialog.js`, `data-backup.js`
+- `lowercase.js` for single-word modules: `app.js`, `db.js`, `auth.js`, `utils.js`, `toast.js`
+- Same convention for CSS: `auth-tabs.css`, `user-menu.css`, `variables.css`
+
+## Database Schema (IndexedDB)
+
+### `categories` Object Store
+
+**Purpose**: Predefined expense categories with icons and colors
+
+```javascript
+{
+  id: number,              // Auto-increment primary key
+  nombre: string,          // Category name (unique)
+  icono: string,          // Emoji icon (🍔, 🚗, etc.)
+  color: string,          // Hex color (#10B981, #3B82F6, etc.)
+  activo: boolean         // Is active (always true for defaults)
+}
+```
+
+**Indexes**:
+- `nombre` (unique)
+
+**Default Categories** (7 total):
+1. Comida 🍔 #10B981
+2. Transporte 🚗 #3B82F6
+3. Servicios 💡 #F59E0B
+4. Compras 🛍️ #8B5CF6
+5. Entretenimiento 🎬 #EC4899
+6. Salud ⚕️ #EF4444
+7. Otros 📦 #6B7280
+
+### `expenses` Object Store
+
+**Purpose**: All expense records
+
+```javascript
+{
+  id: number,                      // Auto-increment primary key
+  monto: number,                   // Amount (must be > 0)
+  descripcion: string,             // Description (max 255 chars)
+  categoria_id: number,            // FK to categories.id
+  fecha: string,                   // Date YYYY-MM-DD
+  notas: string | null,            // Optional notes
+  fecha_creacion: string,          // ISO 8601 timestamp
+  fecha_actualizacion: string | null  // ISO 8601 timestamp or null
+}
+```
+
+**Indexes**:
+- `fecha` (for date range queries)
+- `categoria_id` (for filtering by category)
+- `fecha_creacion` (for recent expenses)
 
 ## Development Workflow
 
-**Environment Setup**:
-```bash
-# Backend (from project root)
-cd backend
-python -m venv venv
-venv\Scripts\activate              # Windows
-source venv/bin/activate           # Linux/Mac
-pip install -r requirements.txt
+### Local Development
 
-# Frontend (separate terminal)
+**Start Development Server**:
+```bash
 cd frontend
 python -m http.server 3000
+# Or: npx serve -p 3000
+# Or: Use VSCode Live Server extension
 ```
 
-**Run Backend**:
-```bash
-cd backend
-uvicorn app.main:app --reload
-# API: http://localhost:8000
-# Docs: http://localhost:8000/docs
+**Access App**:
+```
+http://localhost:3000
 ```
 
-**Database Initialization**:
-Database tables are created automatically via `init_db()` in `database.py` using SQLAlchemy's `Base.metadata.create_all()`. Initial categories are inserted via SQL in schema.
+**DevTools Debugging**:
+- **Console**: General JavaScript errors and logs
+- **Application → IndexedDB**: Inspect `ExpenseTrackerDB` data
+- **Application → Local Storage**: Check auth data
+- **Application → Service Workers**: Manage SW lifecycle
+- **Network**: Monitor resource loading (should be minimal/cached)
 
-**Testing**:
-```bash
-cd backend
-pytest                                    # All tests
-pytest --cov=app --cov-report=html       # With coverage
-pytest tests/test_expenses.py::test_create_expense -v  # Single test
+### Database Initialization
+
+**Auto-initialization**: Database and tables created automatically on first run
+```javascript
+// db.js init() method
+request.onupgradeneeded = (event) => {
+  const db = event.target.result;
+
+  // Create stores
+  const expenseStore = db.createObjectStore('expenses', {
+    keyPath: 'id',
+    autoIncrement: true
+  });
+
+  // Create indexes
+  expenseStore.createIndex('fecha', 'fecha', { unique: false });
+
+  // Insert default categories
+  // (see db.js lines 48-63)
+};
 ```
-Target: >60% coverage for MVP.
+
+**No migration scripts needed**: IndexedDB version is managed automatically
+
+### Testing Strategy
+
+**Current state**: No formal test suite (MVP phase)
+
+**Manual testing checklist**:
+- [ ] Register new user
+- [ ] Login with correct/incorrect PIN
+- [ ] Add new expense
+- [ ] Edit existing expense
+- [ ] Delete expense (with confirmation)
+- [ ] Filter expenses by month
+- [ ] View statistics charts
+- [ ] Export data (downloads JSON)
+- [ ] Import data (replaces all data)
+- [ ] Logout and login again
+- [ ] PWA installation
+- [ ] Offline functionality
+
+**Future**: Consider Playwright or Cypress for E2E testing
 
 ## Key Configuration
 
-**backend/.env** (create from .env.example):
-- `DATABASE_URL`: SQLite path (default: `sqlite:///./expenses.db`)
-- `CORS_ORIGINS`: Frontend URLs for CORS
-- `DEBUG`: Boolean for development mode
+### PWA Manifest (`manifest.json`)
 
-**backend/app/config.py**: Pydantic Settings class that loads from .env
+```json
+{
+  "name": "Control de Gastos",
+  "short_name": "Gastos",
+  "theme_color": "#6366F1",
+  "background_color": "#FFFFFF",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "orientation": "portrait-primary",
+  "icons": [ /* 192x192, 512x512 */ ],
+  "shortcuts": [
+    {
+      "name": "Agregar Gasto",
+      "url": "/?action=add",
+      "icons": [{ "src": "/assets/icons/add-expense-96x96.png", "sizes": "96x96" }]
+    }
+  ]
+}
+```
 
-## API Design
+### Service Worker (`sw.js`)
 
-REST endpoints follow pattern: `/api/{resource}` with standard HTTP methods.
+**Cache Names**:
+```javascript
+const STATIC_CACHE = 'static-v2.0';
+const DYNAMIC_CACHE = 'dynamic-v2.0';
+```
 
-**Response models**: Always use Pydantic schemas in `response_model` parameter.
+**Cached URLs**:
+- App shell: HTML, CSS, JS
+- External fonts: Google Fonts (Montserrat)
+- External libs: Chart.js, Font Awesome
 
-**Error handling**: Custom exceptions in `utils/exceptions.py` (e.g., `ExpenseNotFoundError`), caught in routers and converted to HTTPException with appropriate status codes.
+**Strategies**:
+- **Cache First**: Static assets (CSS, JS, fonts)
+- **Network First**: Dynamic content (future API calls)
+- **Stale While Revalidate**: Images and icons
 
-## MVP Scope
+**Update Process**: Increment version number to invalidate old caches
 
-Current phase focuses on:
-1. CRUD for expenses (Create, Read, Delete - no Update yet)
-2. List predefined categories
-3. Monthly dashboard summary
-4. Mobile-first responsive UI
-5. Basic PWA support (manifest, service worker stub)
+### CSS Custom Properties (`variables.css`)
 
-**Out of scope for MVP**: Edit expenses, advanced filters, charts, subscriptions, multi-currency, authentication.
+**Design Tokens**:
+```css
+:root {
+  /* Colors */
+  --color-primary: #6366F1;
+  --color-secondary: #10B981;
+  --color-danger: #EF4444;
+
+  /* Text (WCAG AA) */
+  --color-text-primary: #111827;
+  --color-text-secondary: #374151;
+
+  /* Spacing (8px scale) */
+  --spacing-xs: 0.25rem;  /* 4px */
+  --spacing-sm: 0.5rem;   /* 8px */
+  --spacing-md: 1rem;     /* 16px */
+  --spacing-lg: 1.5rem;   /* 24px */
+
+  /* Typography */
+  --font-family: 'Montserrat', system-ui, sans-serif;
+  --font-size-base: 1rem;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+  /* Transitions */
+  --transition-fast: 150ms;
+  --transition-base: 200ms;
+  --transition-slow: 300ms;
+}
+```
 
 ## Code Quality Standards
 
-- **Type hints required**: All function signatures must include parameter and return types
-- **Docstrings**: Only on complex business logic, not obvious CRUD operations
-- **Error handling**: Validate at system boundaries (user input, external APIs), trust internal code
-- **No over-engineering**: Don't add abstractions, error handling, or features beyond current requirements
-- **Mobile-first CSS**: Base styles for small screens, progressive enhancement for larger viewports
-- **JavaScript modules**: Use ES6 `import`/`export`, no bundler needed
+### JavaScript Best Practices
 
-## Spanish-English Hybrid Approach
+**Async/Await**: Prefer over Promises chains
+```javascript
+// Good
+async loadExpenses() {
+  try {
+    const expenses = await db.getAllExpenses();
+    this.renderExpenses(expenses);
+  } catch (error) {
+    showError('Error al cargar gastos');
+  }
+}
 
-- **Database layer** (models, SQL): Spanish (`Gasto`, `monto`, `descripcion`)
-- **API layer** (schemas, services, routers): English class names, Spanish in docstrings when helpful
-- **Frontend**: Spanish for user-facing text, English for code identifiers
-- **Comments/docs**: Primarily Spanish as developer is Spanish speaker
+// Avoid
+loadExpenses() {
+  db.getAllExpenses()
+    .then(expenses => this.renderExpenses(expenses))
+    .catch(error => showError('Error al cargar gastos'));
+}
+```
 
-This hybrid approach maintains clarity at each layer while respecting the bilingual development context.
+**Error Handling**: At system boundaries (user input, DB operations)
+```javascript
+// Validate user input
+if (!auth.validatePIN(pin)) {
+  throw new Error('El PIN debe contener exactamente 4 dígitos');
+}
+
+// Handle DB errors
+try {
+  await db.createExpense(data);
+  showSuccess('Gasto creado');
+} catch (error) {
+  console.error('DB error:', error);
+  showError('Error al guardar');
+}
+```
+
+**No Over-Engineering**:
+- Don't add abstractions until needed (YAGNI)
+- Don't handle errors that can't happen
+- Keep functions focused and simple
+- Avoid premature optimization
+
+**Dynamic Imports**: For optional dependencies
+```javascript
+// utils.js - avoids circular dependencies
+export const showError = (message) => {
+  import('./toast.js').then(module => {
+    module.default.error(message);
+  });
+};
+```
+
+### CSS Best Practices
+
+**Mobile-First**: Base styles for smallest screens, enhance for larger
+```css
+/* Base: 320px+ */
+.card {
+  padding: 1rem;
+}
+
+/* Tablet: 768px+ */
+@media (min-width: 768px) {
+  .card {
+    padding: 1.5rem;
+  }
+}
+```
+
+**Custom Properties**: For consistency and theming
+```css
+/* Use */
+.btn-primary {
+  background: var(--color-primary);
+  padding: var(--spacing-md);
+}
+
+/* Avoid hardcoding */
+.btn-primary {
+  background: #6366F1;
+  padding: 16px;
+}
+```
+
+**Accessibility**:
+- Minimum contrast ratio 4.5:1 (WCAG AA)
+- Focus states for keyboard navigation
+- Respect `prefers-reduced-motion`
+```css
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+### Performance
+
+**Minimize DOM Manipulations**: Batch updates
+```javascript
+// Good: Single innerHTML update
+container.innerHTML = expenses.map(exp => `<div>...</div>`).join('');
+
+// Avoid: Multiple appendChild calls in loop
+expenses.forEach(exp => {
+  const div = document.createElement('div');
+  container.appendChild(div); // Triggers reflow each time
+});
+```
+
+**Event Delegation**: For lists with many items
+```javascript
+// Good: Single listener on parent
+container.addEventListener('click', (e) => {
+  if (e.target.classList.contains('delete-btn')) {
+    this.handleDelete(e.target.dataset.id);
+  }
+});
+
+// Avoid: Listener on each item
+items.forEach(item => {
+  item.addEventListener('click', () => { }); // Memory leak risk
+});
+```
+
+**Lazy Loading**: Load modules when needed
+```javascript
+// Only load Chart.js when viewing statistics
+async loadStatistics() {
+  if (typeof Chart === 'undefined') {
+    await import('https://cdn.jsdelivr.net/npm/chart.js@4.4.1');
+  }
+  this.renderCharts();
+}
+```
+
+## User Experience Patterns
+
+### Notifications
+
+**Toast for Info**: Non-blocking, auto-dismiss
+```javascript
+showSuccess('Gasto creado exitosamente');
+showError('Error al guardar');
+showWarning('PIN incorrecto');
+```
+
+**Dialogs for Actions**: Requires user decision
+```javascript
+const confirmed = await confirm('¿Cerrar sesión?', 'Confirmar');
+if (confirmed) {
+  auth.logout();
+}
+
+const confirmed = await confirmDanger(
+  '¿Eliminar este gasto?',
+  'Eliminar Gasto'
+);
+```
+
+### Form Validation
+
+**HTML5 First**: Use native validation
+```html
+<input type="number" min="0.01" step="0.01" required>
+<input type="date" required>
+<input type="password" pattern="\d{4}" maxlength="4" required>
+```
+
+**JavaScript Enhancement**: For complex rules
+```javascript
+if (pin !== confirmPin) {
+  showError('Los PINs no coinciden');
+  return;
+}
+```
+
+### Loading States
+
+**Skeleton Screens**: For initial load
+```html
+<div class="loading">
+  <i class="fas fa-spinner fa-spin"></i> Cargando gastos...
+</div>
+```
+
+**Empty States**: When no data
+```html
+<div class="empty-state">
+  <div class="empty-state-icon"><i class="fas fa-receipt"></i></div>
+  <p>No hay gastos registrados</p>
+</div>
+```
+
+## Common Tasks
+
+### Adding a New Feature
+
+1. **Plan**: Determine if it needs UI, DB changes, or both
+2. **Database**: Update `db.js` if new queries needed
+3. **UI**: Add HTML structure to `index.html`
+4. **Styles**: Add CSS to appropriate file (components, layout, etc.)
+5. **Logic**: Update `app.js` with event handlers and methods
+6. **Test**: Manual testing checklist
+7. **Update Docs**: Update README.md and CLAUDE.md
+
+### Modifying the Database Schema
+
+**⚠️ Warning**: Changing schema requires version bump and migration
+
+```javascript
+// db.js
+const DB_VERSION = 2; // Increment version
+
+request.onupgradeneeded = (event) => {
+  const db = event.target.result;
+  const oldVersion = event.oldVersion;
+
+  if (oldVersion < 2) {
+    // Migration from v1 to v2
+    const transaction = event.target.transaction;
+    const expenseStore = transaction.objectStore('expenses');
+
+    // Add new field (example)
+    // Note: IndexedDB doesn't enforce schema, just add to objects
+  }
+};
+```
+
+**Better approach for MVP**: Use `notas` field for extensibility
+
+### Debugging IndexedDB
+
+**Chrome DevTools**:
+1. F12 → Application tab
+2. IndexedDB → ExpenseTrackerDB
+3. Expand stores (expenses, categories)
+4. Double-click to edit values
+5. Right-click to delete entries
+
+**Console queries**:
+```javascript
+// Get reference to DB (in console)
+const request = indexedDB.open('ExpenseTrackerDB');
+request.onsuccess = () => {
+  const db = request.result;
+  const tx = db.transaction('expenses', 'readonly');
+  const store = tx.objectStore('expenses');
+  const req = store.getAll();
+  req.onsuccess = () => console.table(req.result);
+};
+```
+
+## Gotchas and Common Issues
+
+### IndexedDB Quirks
+
+**Transactions are auto-commit**: Can't keep reference
+```javascript
+// Bad
+const tx = db.transaction('expenses', 'readwrite');
+await someAsyncOperation(); // Transaction may close!
+const store = tx.objectStore('expenses'); // May fail
+```
+
+**Promises and IndexedDB**: Wrap requests
+```javascript
+// Good pattern
+return new Promise((resolve, reject) => {
+  const request = store.get(id);
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+```
+
+### Service Worker Caching
+
+**Old cache persists**: Must increment version
+```javascript
+// sw.js - Change this to force update
+const STATIC_CACHE = 'static-v2.1'; // Was v2.0
+```
+
+**Update not applying**: Hard reload
+```
+Ctrl+Shift+R (Windows/Linux)
+Cmd+Shift+R (Mac)
+```
+
+### CSS Specificity
+
+**Utility classes may be overridden**: Use `!important` sparingly or increase specificity
+```css
+/* If .hidden is not working */
+.hidden {
+  display: none !important;
+}
+
+/* Or increase specificity */
+.modal-overlay.hidden {
+  display: none;
+}
+```
+
+### Date Handling
+
+**Timezone issues**: Always use YYYY-MM-DD strings, avoid `new Date()`
+```javascript
+// Good
+const dateString = '2026-01-15';
+const date = new Date(dateString + 'T00:00:00'); // Explicit time
+
+// Avoid
+const date = new Date('2026-01-15'); // May parse as UTC or local
+```
+
+## Spanish-English Hybrid Strategy
+
+### When to Use Spanish
+
+- **Database field names**: `monto`, `descripcion`, `fecha_creacion`
+- **UI text**: All user-facing strings
+- **Comments**: When explaining business logic
+- **Logs**: User-facing error messages
+
+### When to Use English
+
+- **Code identifiers**: `class ExpenseApp`, `function handleSubmit`
+- **Technical comments**: Architecture, patterns, TODOs
+- **Git commits**: English convention for broader audience
+- **Documentation**: Technical docs (like this file)
+
+### Example
+
+```javascript
+/**
+ * Obtiene el resumen mensual de gastos por categoría
+ * Gets monthly expense summary grouped by category
+ *
+ * @param {number} year - Año (year)
+ * @param {number} month - Mes 1-12 (month)
+ * @returns {Promise<Object>} Resumen con total y categorías
+ */
+async getMonthlySummary(year, month) {
+  const expenses = await this.getExpensesByMonth(year, month);
+  const total = expenses.reduce((sum, exp) => sum + parseFloat(exp.monto), 0);
+
+  // Agrupar por categoría (group by category)
+  const porCategoria = {};
+  expenses.forEach(expense => {
+    const categoryName = category ? category.nombre : 'Sin categoría';
+    porCategoria[categoryName] = (porCategoria[categoryName] || 0) + parseFloat(expense.monto);
+  });
+
+  return { year, month, total, count: expenses.length, porCategoria };
+}
+```
+
+This bilingual approach maintains technical clarity while respecting the user's language and original requirements.
+
+---
+
+**Last Updated**: January 2026
+**Project Version**: 2.1.0 (Offline Complete + Backup + Side Drawer)
+**Architecture**: 100% Frontend Offline-First PWA
