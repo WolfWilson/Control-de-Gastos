@@ -1,174 +1,286 @@
-# 💰 Control de Gastos - PWA
+# 💰 Control de Gastos - PWA Offline
 
-Progressive Web App para control de gastos personales con enfoque mobile-first.
+Progressive Web App **completamente offline** para control de gastos personales con autenticación simple, gráficos interactivos y diseño moderno.
 
-## Stack Tecnológico
+## ✨ Características
 
-**Backend:**
-- Python 3.11+
-- FastAPI 0.104+
-- SQLAlchemy 2.0+
-- SQLite 3
-- pytest
+### Funcionalidades Principales
+- ✅ **100% Offline** - Funciona sin conexión a internet usando IndexedDB
+- ✅ **Autenticación Simple** - Nombre + PIN de 4 dígitos para proteger tus datos
+- ✅ **CRUD Completo** - Crear, leer, editar y eliminar gastos
+- ✅ **Categorías Predefinidas** - 7 categorías con iconos y colores
+- ✅ **Resúmenes Múltiples** - Semanal, mensual y anual
+- ✅ **Gráficos Interactivos** - Visualización con Chart.js
+- ✅ **Diseño Moderno** - UI mejorada con Font Awesome y Montserrat
+- ✅ **PWA Instalable** - Instálala como app nativa en tu dispositivo
 
-**Frontend:**
+### Nuevas Funcionalidades (v2.0)
+- 🎨 Diseño completamente renovado con paleta de colores moderna
+- 📊 Dashboard con 3 tarjetas de resumen (semanal, mensual, anual)
+- 📈 Estadísticas con gráficos de dona (categorías) y línea (evolución anual)
+- ✏️ Edición de gastos existentes
+- 🔐 Sistema de login/registro con PIN
+- 🚪 Botón de logout
+- 📱 Pestañas de navegación (Dashboard, Gastos, Estadísticas)
+- 🔍 Filtro de gastos por mes
+- 🎯 Mobile-first completamente responsive
+
+## 🛠️ Stack Tecnológico
+
+**Frontend (100% offline)**:
 - HTML5 Semántico
-- CSS3 (Custom Properties, Grid, Flexbox)
-- JavaScript Vanilla ES6+
-- PWA (Service Worker, Web Manifest)
+- CSS3 con Custom Properties
+- JavaScript Vanilla ES6+ con módulos
+- IndexedDB para almacenamiento local
+- Chart.js para gráficos
+- Font Awesome 6.5 para iconos
+- Google Fonts (Montserrat)
+- Service Worker para PWA
 
-## Instalación
+**Herramientas de Desarrollo**:
+- VSCode
+- Live Server o `python -m http.server`
 
-### Requisitos Previos
-- Python 3.11+
-- pip
-- Git
+## 📁 Arquitectura del Proyecto
 
-### Backend Setup
-
-1. Activar el entorno virtual:
-```bash
-# Windows
-venv\Scripts\activate
-
-# Linux/Mac
-source venv/bin/activate
+```
+frontend/
+├── index.html              # Aplicación de página única
+├── manifest.json           # PWA manifest
+├── sw.js                   # Service Worker con cache
+├── css/
+│   ├── variables.css       # Variables CSS (colores, espaciado)
+│   ├── base.css           # Estilos base y reset
+│   ├── layout.css         # Layouts y containers
+│   └── components.css     # Componentes UI
+└── js/
+    ├── app.js             # Aplicación principal
+    ├── db.js              # Gestor de IndexedDB
+    ├── auth.js            # Sistema de autenticación
+    └── utils.js           # Funciones de utilidad
 ```
 
-2. Instalar dependencias:
+## 🚀 Cómo Usar
+
+### Instalación y Ejecución
+
+1. **Clonar el repositorio**:
 ```bash
-cd backend
-pip install -r requirements.txt
+git clone <url-del-repo>
+cd "Control de Gastos"
 ```
 
-3. Crear archivo de configuración:
-```bash
-cp .env.example .env
-```
+2. **Servir la aplicación**:
 
-4. Inicializar la base de datos y crear categorías por defecto:
-```bash
-# Desde la carpeta backend/
-python init_categories.py
-```
-
-5. Ejecutar el servidor:
-```bash
-uvicorn app.main:app --reload
-```
-
-La API estará disponible en:
-- API: http://localhost:8000
-- Documentación interactiva: http://localhost:8000/docs
-
-### Frontend Setup
-
-En una terminal separada:
-
+**Opción 1: Python**
 ```bash
 cd frontend
 python -m http.server 3000
 ```
 
-La aplicación estará disponible en: http://localhost:3000
+**Opción 2: Live Server (VSCode)**
+- Instala la extensión "Live Server"
+- Click derecho en `index.html` → "Open with Live Server"
 
-## Estructura del Proyecto
-
+3. **Abrir en el navegador**:
 ```
-Control de Gastos/
-├── backend/
-│   ├── app/
-│   │   ├── models/          # Modelos SQLAlchemy
-│   │   ├── schemas/         # Esquemas Pydantic
-│   │   ├── repositories/    # Capa de acceso a datos
-│   │   ├── services/        # Lógica de negocio
-│   │   ├── routers/         # Endpoints API
-│   │   ├── utils/           # Utilidades y excepciones
-│   │   ├── config.py        # Configuración
-│   │   ├── database.py      # Conexión a BD
-│   │   └── main.py          # Aplicación FastAPI
-│   ├── tests/               # Tests con pytest
-│   ├── init_categories.py   # Script de inicialización
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── css/                 # Estilos (variables, base, layout, components)
-│   ├── js/                  # JavaScript modular
-│   │   ├── api.js          # Cliente API
-│   │   ├── utils.js        # Funciones helper
-│   │   └── app.js          # Aplicación principal
-│   ├── index.html
-│   ├── manifest.json       # PWA manifest
-│   └── sw.js               # Service Worker
-│
-├── .gitignore
-├── CLAUDE.md               # Documentación para Claude Code
-└── README.md
+http://localhost:3000
 ```
 
-## Testing
+### Primer Uso
 
-Ejecutar todos los tests:
-```bash
-cd backend
-pytest
-```
+1. **Registro**: Al abrir la app por primera vez, se te pedirá:
+   - Tu nombre (para personalizar la UI)
+   - Un PIN de 4 dígitos (para proteger tus datos)
+   - Confirmar el PIN
 
-Con coverage:
-```bash
-pytest --cov=app --cov-report=html
-```
+2. **Login Subsecuente**: En futuras visitas, solo necesitarás ingresar tu PIN
 
-Test específico:
-```bash
-pytest tests/test_routers.py::test_create_expense -v
-```
+3. **Agregar Gastos**: Click en el botón `+` flotante para agregar un nuevo gasto
 
-## API Endpoints
+### Funcionalidades
 
-### Gastos (Expenses)
-- `POST /api/expenses` - Crear gasto
-- `GET /api/expenses` - Listar gastos (con filtros opcionales)
-- `GET /api/expenses/{id}` - Obtener gasto por ID
-- `DELETE /api/expenses/{id}` - Eliminar gasto
-- `GET /api/expenses/dashboard/monthly` - Resumen mensual
+#### Dashboard
+- **Resumen Semanal**: Total de gastos de los últimos 7 días
+- **Resumen Mensual**: Total del mes actual
+- **Resumen Anual**: Total del año en curso
+- **Últimos Gastos**: Lista de los 10 gastos más recientes
 
-### Categorías (Categories)
-- `GET /api/categories` - Listar categorías
-- `POST /api/categories` - Crear categoría
-- `GET /api/categories/{id}` - Obtener categoría por ID
+#### Pestaña Gastos
+- Ver todos los gastos registrados
+- Filtrar por mes específico
+- Editar cualquier gasto (click en el ícono de lápiz)
+- Eliminar gastos (click en el ícono de basura)
 
-## Características MVP
+#### Pestaña Estadísticas
+- **Gráfico de Dona**: Distribución de gastos por categoría (mes actual)
+- **Gráfico de Línea**: Evolución de gastos durante el año
 
-- ✅ CRUD de gastos (Create, Read, Delete)
-- ✅ 7 categorías predefinidas con iconos
-- ✅ Dashboard con total mensual
-- ✅ Lista de últimos gastos
-- ✅ Interfaz responsive mobile-first
-- ✅ PWA instalable
-- ✅ Tests automatizados (>60% coverage)
+#### Gestión de Gastos
+- **Crear**: Click en `+` → Completar formulario → Guardar
+- **Editar**: Click en ícono de lápiz en cualquier gasto
+- **Eliminar**: Click en ícono de basura (requiere confirmación)
 
-## Próximas Funcionalidades (Post-MVP)
+#### Logout
+- Click en el ícono de salida en el header
+- Cierra sesión sin eliminar tus datos
 
-- [ ] Editar gastos
-- [ ] Filtros avanzados
-- [ ] Gráficos y estadísticas
-- [ ] Exportar a CSV
-- [ ] Suscripciones recurrentes
-- [ ] Modo offline completo
+## 🗄️ Almacenamiento de Datos
 
-## Convenciones
+### IndexedDB
+Los datos se almacenan **localmente en tu navegador** usando IndexedDB:
 
-- **Base de datos**: Nombres en español (snake_case)
-- **Código Python**: Nombres en inglés, type hints obligatorios
-- **Frontend**: JavaScript ES6+ con módulos
-- **CSS**: Mobile-first, custom properties
-- **Git**: Commits descriptivos en español
+**Base de Datos**: `ExpenseTrackerDB`
 
-## Licencia
+**Stores (Tablas)**:
+1. **expenses** - Almacena todos los gastos
+   - id, monto, descripcion, categoria_id, fecha, notas
+   - fecha_creacion, fecha_actualizacion
+
+2. **categories** - Categorías predefinidas
+   - id, nombre, icono, color, activo
+
+**Categorías Incluidas**:
+- 🍔 Comida (#10B981)
+- 🚗 Transporte (#3B82F6)
+- 💡 Servicios (#F59E0B)
+- 🛍️ Compras (#8B5CF6)
+- 🎬 Entretenimiento (#EC4899)
+- ⚕️ Salud (#EF4444)
+- 📦 Otros (#6B7280)
+
+### LocalStorage
+Se usa solo para almacenar la autenticación:
+- Nombre del usuario
+- PIN (almacenado como texto plano - es un soft lock, no seguridad real)
+
+**Nota de Seguridad**: Esta es una aplicación de uso personal. El PIN es solo para evitar accesos accidentales, **no** es seguridad criptográfica real.
+
+## 🎨 Diseño y UI
+
+### Paleta de Colores
+- **Primary**: #6366F1 (Indigo)
+- **Secondary**: #10B981 (Green)
+- **Danger**: #EF4444 (Red)
+- **Warning**: #F59E0B (Orange)
+
+### Tipografía
+- **Fuente**: Montserrat (300, 400, 500, 600, 700)
+- **Iconos**: Font Awesome 6.5.1
+
+### Responsive
+- **Mobile**: 320px+ (diseño base)
+- **Tablet**: 768px+
+- **Desktop**: 1024px+
+
+## 🔧 Desarrollo
+
+### Estructura del Código
+
+**app.js** - Clase principal `ExpenseApp`:
+- Manejo de autenticación
+- Navegación entre pestañas
+- CRUD de gastos
+- Renderizado de gráficos
+- Gestión del Service Worker
+
+**db.js** - Clase `DatabaseManager`:
+- Inicialización de IndexedDB
+- Operaciones CRUD
+- Consultas y agregaciones
+- Resúmenes (semanal, mensual, anual)
+
+**auth.js** - Clase `AuthManager`:
+- Registro de usuarios
+- Login/Logout
+- Validación de PIN
+- Gestión de sesión
+
+**utils.js** - Funciones de utilidad:
+- Formateo de moneda
+- Formateo de fechas
+- Alertas y confirmaciones
+
+### Service Worker
+
+El Service Worker implementa tres estrategias de cache:
+
+1. **Cache-First**: Para recursos estáticos (CSS, JS, fonts)
+2. **Network-First**: Para llamadas API (futuro)
+3. **Stale-While-Revalidate**: Para contenido dinámico
+
+**Caches**:
+- `static-v2.0`: App shell y recursos críticos
+- `dynamic-v2.0`: Recursos cargados dinámicamente
+
+## 📱 Instalar como PWA
+
+### Android (Chrome)
+1. Abre la app en Chrome
+2. Menú → "Agregar a pantalla de inicio"
+3. La app se instalará como nativa
+
+### iOS (Safari)
+1. Abre la app en Safari
+2. Botón compartir → "Agregar a pantalla de inicio"
+3. La app se instalará como nativa
+
+### Desktop (Chrome/Edge)
+1. Click en el ícono de instalación en la barra de direcciones
+2. O Menú → "Instalar Control de Gastos"
+
+## 🔐 Privacidad y Seguridad
+
+- ✅ **100% Local**: Todos los datos se almacenan en tu dispositivo
+- ✅ **Sin Internet**: No envía datos a ningún servidor
+- ✅ **Sin Tracking**: No hay analytics ni telemetría
+- ✅ **Sin Cuentas Cloud**: Cada dispositivo tiene su propia base de datos
+- ⚠️ **Backup Manual**: Tus datos solo existen en este navegador/dispositivo
+- ⚠️ **Soft Security**: El PIN es solo para evitar accesos accidentales
+
+## 🐛 Troubleshooting
+
+### La app no carga
+1. Verifica que el servidor está corriendo
+2. Abre las DevTools → Console para ver errores
+3. Limpia la cache del navegador (Ctrl+Shift+Delete)
+
+### Los datos no se guardan
+1. Verifica que IndexedDB está habilitado en tu navegador
+2. No uses modo incógnito/privado
+3. Revisa que tienes espacio disponible
+
+### Service Worker no funciona
+1. Asegúrate de servir la app via HTTP/HTTPS (no `file://`)
+2. En DevTools → Application → Service Workers → Unregister
+3. Recarga la página
+
+### Quiero borrar todos los datos
+1. Abre DevTools → Application
+2. Storage → IndexedDB → Elimina `ExpenseTrackerDB`
+3. Storage → Local Storage → Elimina el dominio
+4. Recarga la página
+
+## 🚧 Futuras Mejoras
+
+- [ ] Exportar/Importar datos (JSON/CSV)
+- [ ] Desbloqueo con huella dactilar (Web Authentication API)
+- [ ] Sincronización entre dispositivos (opcional)
+- [ ] Más tipos de gráficos
+- [ ] Presupuestos por categoría
+- [ ] Búsqueda avanzada de gastos
+- [ ] Modo oscuro
+- [ ] Múltiples usuarios en el mismo dispositivo
+
+## 📄 Licencia
 
 Uso personal y círculo cercano (no comercial)
 
+## 🤝 Contribuciones
+
+Este es un proyecto personal de aprendizaje. No se aceptan contribuciones externas en este momento.
+
 ---
 
-**Versión**: 0.1.0 (MVP)
+**Versión**: 2.0.0 (Offline Complete)
+**Última actualización**: Enero 2026

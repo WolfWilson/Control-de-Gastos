@@ -3,13 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Control de Gastos Personal - Aplicación PWA para gestionar tus gastos">
-    <meta name="theme-color" content="#4F46E5">
+    <meta name="description" content="Control de Gastos Personal - Aplicación PWA offline para gestionar tus gastos">
+    <meta name="theme-color" content="#6366F1">
 
     <title>Control de Gastos</title>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
+
+    <!-- Google Fonts - Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <!-- Styles -->
     <link rel="stylesheet" href="/css/variables.css">
@@ -18,48 +29,252 @@
     <link rel="stylesheet" href="/css/components.css">
 </head>
 <body>
-    <div class="app">
+    <!-- Login/Register Screen -->
+    <div id="authScreen" class="auth-screen hidden">
+        <div class="auth-container">
+            <div class="auth-header">
+                <i class="fas fa-wallet auth-icon"></i>
+                <h1>Control de Gastos</h1>
+                <p>Tu asistente personal de finanzas</p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="auth-form">
+                <h2>Bienvenido</h2>
+                <p class="auth-subtitle">Configura tu cuenta para comenzar</p>
+
+                <form id="registerFormElement">
+                    <div class="form-group">
+                        <label for="registerNombre" class="form-label">
+                            <i class="fas fa-user"></i> Tu Nombre
+                        </label>
+                        <input
+                            type="text"
+                            id="registerNombre"
+                            class="form-input"
+                            placeholder="Ej: Juan Pérez"
+                            required
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="registerPin" class="form-label">
+                            <i class="fas fa-lock"></i> PIN de Seguridad (4 dígitos)
+                        </label>
+                        <input
+                            type="password"
+                            id="registerPin"
+                            class="form-input pin-input"
+                            placeholder="****"
+                            pattern="\d{4}"
+                            maxlength="4"
+                            required
+                            inputmode="numeric"
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPin" class="form-label">
+                            <i class="fas fa-lock"></i> Confirmar PIN
+                        </label>
+                        <input
+                            type="password"
+                            id="confirmPin"
+                            class="form-input pin-input"
+                            placeholder="****"
+                            pattern="\d{4}"
+                            maxlength="4"
+                            required
+                            inputmode="numeric"
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-check-circle"></i> Crear Cuenta
+                    </button>
+                </form>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginForm" class="auth-form hidden">
+                <h2>Hola, <span id="loginUserName"></span></h2>
+                <p class="auth-subtitle">Ingresa tu PIN para continuar</p>
+
+                <form id="loginFormElement">
+                    <div class="form-group">
+                        <label for="loginPin" class="form-label">
+                            <i class="fas fa-lock"></i> PIN de Seguridad
+                        </label>
+                        <input
+                            type="password"
+                            id="loginPin"
+                            class="form-input pin-input"
+                            placeholder="****"
+                            pattern="\d{4}"
+                            maxlength="4"
+                            required
+                            inputmode="numeric"
+                            autofocus
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-sign-in-alt"></i> Ingresar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="app hidden">
         <!-- Header -->
         <header class="app-header">
-            <h1>💰 Control de Gastos</h1>
+            <div class="header-content">
+                <h1><i class="fas fa-wallet"></i> Control de Gastos</h1>
+                <div class="header-actions">
+                    <span class="user-welcome">Hola, <strong id="headerUserName"></strong></span>
+                    <button class="btn-icon" id="logoutBtn" title="Cerrar sesión">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
         </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs-nav">
+            <button class="tab-btn active" data-tab="dashboard">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </button>
+            <button class="tab-btn" data-tab="expenses">
+                <i class="fas fa-list"></i> Gastos
+            </button>
+            <button class="tab-btn" data-tab="stats">
+                <i class="fas fa-chart-pie"></i> Estadísticas
+            </button>
+        </nav>
 
         <!-- Main Content -->
         <main class="app-main container">
-            <!-- Dashboard Section -->
-            <section class="card dashboard-summary">
-                <h2 class="summary-label">Total del mes</h2>
-                <div class="summary-value" id="monthlyTotal">$0.00</div>
-            </section>
+            <!-- Dashboard Tab -->
+            <div id="dashboardTab" class="tab-content active">
+                <!-- Summary Cards -->
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #10B981;">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Esta semana</span>
+                            <span class="summary-value" id="weeklyTotal">$0.00</span>
+                        </div>
+                    </div>
 
-            <!-- Recent Expenses Section -->
-            <section class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Últimos gastos</h2>
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #6366F1;">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Este mes</span>
+                            <span class="summary-value" id="monthlyTotal">$0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #F59E0B;">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Este año</span>
+                            <span class="summary-value" id="yearlyTotal">$0.00</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div id="expensesList" class="expense-list">
-                    <div class="loading">Cargando gastos...</div>
-                </div>
-            </section>
+                <!-- Recent Expenses -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-clock"></i> Últimos gastos</h2>
+                    </div>
+
+                    <div id="expensesList" class="expense-list">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Cargando gastos...
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Expenses Tab -->
+            <div id="expensesTab" class="tab-content">
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-receipt"></i> Todos los gastos</h2>
+                        <div class="filter-controls">
+                            <select id="monthFilter" class="form-select-sm">
+                                <option value="">Todos los meses</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="allExpensesList" class="expense-list">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Cargando gastos...
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Statistics Tab -->
+            <div id="statsTab" class="tab-content">
+                <!-- Monthly Chart -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-chart-bar"></i> Gastos por categoría (mes actual)</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Yearly Chart -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-chart-line"></i> Evolución anual</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="yearlyChart"></canvas>
+                    </div>
+                </section>
+            </div>
         </main>
 
         <!-- Floating Action Button -->
-        <button class="fab" id="addExpenseBtn" aria-label="Agregar gasto" title="Agregar gasto">
-            +
+        <button class="fab" id="addExpenseBtn" title="Agregar gasto">
+            <i class="fas fa-plus"></i>
         </button>
     </div>
 
-    <!-- Add Expense Modal -->
-    <div id="addExpenseModal" class="modal-overlay hidden">
+    <!-- Add/Edit Expense Modal -->
+    <div id="expenseModal" class="modal-overlay hidden">
         <div class="modal">
             <div class="modal-header">
-                <h2 class="modal-title">Nuevo Gasto</h2>
+                <h2 class="modal-title" id="modalTitle">
+                    <i class="fas fa-plus-circle"></i> Nuevo Gasto
+                </h2>
+                <button class="btn-close" id="closeModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
 
             <form id="expenseForm">
+                <input type="hidden" id="expenseId">
+
                 <div class="form-group">
-                    <label for="monto" class="form-label">Monto *</label>
+                    <label for="monto" class="form-label">
+                        <i class="fas fa-dollar-sign"></i> Monto *
+                    </label>
                     <input
                         type="number"
                         id="monto"
@@ -73,7 +288,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="descripcion" class="form-label">Descripción *</label>
+                    <label for="descripcion" class="form-label">
+                        <i class="fas fa-align-left"></i> Descripción *
+                    </label>
                     <input
                         type="text"
                         id="descripcion"
@@ -86,7 +303,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="categoria_id" class="form-label">Categoría *</label>
+                    <label for="categoria_id" class="form-label">
+                        <i class="fas fa-tag"></i> Categoría *
+                    </label>
                     <select
                         id="categoria_id"
                         name="categoria_id"
@@ -98,7 +317,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="fecha" class="form-label">Fecha *</label>
+                    <label for="fecha" class="form-label">
+                        <i class="fas fa-calendar"></i> Fecha *
+                    </label>
                     <input
                         type="date"
                         id="fecha"
@@ -109,7 +330,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="notas" class="form-label">Notas</label>
+                    <label for="notas" class="form-label">
+                        <i class="fas fa-sticky-note"></i> Notas
+                    </label>
                     <textarea
                         id="notas"
                         name="notas"
@@ -120,10 +343,10 @@
 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" id="cancelBtn">
-                        Cancelar
+                        <i class="fas fa-times"></i> Cancelar
                     </button>
-                    <button type="submit" class="btn btn-primary">
-                        Guardar
+                    <button type="submit" class="btn btn-primary" id="saveExpenseBtn">
+                        <i class="fas fa-save"></i> Guardar
                     </button>
                 </div>
             </form>
