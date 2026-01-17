@@ -1,0 +1,106 @@
+/* Container */
+.container {
+    padding: var(--spacing-md);
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+/* Tablet (768px+) */
+@media (min-width: 768px) {
+    .container {
+        padding: var(--spacing-lg);
+        max-width: 768px;
+    }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+    .container {
+        max-width: 1024px;
+    }
+}
+
+/* App Layout */
+.app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header {
+    background-color: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--spacing-md);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+    box-shadow: var(--shadow-sm);
+}
+
+.app-header h1 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    color: var(--color-primary);
+}
+
+.app-main {
+    flex: 1;
+    padding: var(--spacing-md);
+}
+
+/* Card Layout */
+.card {
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.card-header {
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.card-title {
+    font-size: var(--font-size-xl);
+    margin: 0;
+}
+
+/* Grid Layout */
+.grid {
+    display: grid;
+    gap: var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+    .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Flex Utilities */
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.gap-sm {
+    gap: var(--spacing-sm);
+}
+
+.gap-md {
+    gap: var(--spacing-md);
+}
