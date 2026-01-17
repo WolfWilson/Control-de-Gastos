@@ -86,12 +86,12 @@ self.addEventListener('fetch', (event) => {
  */
 function isStaticAsset(url) {
   return url.pathname.startsWith('/css/') ||
-         url.pathname.startsWith('/js/') ||
-         url.pathname.endsWith('.html') ||
-         url.pathname === '/' ||
-         url.href.includes('fonts.googleapis.com') ||
-         url.href.includes('fontawesome') ||
-         url.href.includes('chart.js');
+    url.pathname.startsWith('/js/') ||
+    url.pathname.endsWith('.html') ||
+    url.pathname === '/' ||
+    url.href.includes('fonts.googleapis.com') ||
+    url.href.includes('fontawesome') ||
+    url.href.includes('chart.js');
 }
 
 /**
@@ -157,12 +157,18 @@ async function networkFirst(request) {
 async function staleWhileRevalidate(request) {
   const cached = await caches.match(request);
 
-  const fetchPromise = fetch(request).then((response) => {
+  const fetchPromise = fetch(request).then(async (response) => {
     if (response && response.status === 200) {
-      const cache = caches.open(DYNAMIC_CACHE);
-      cache.then((c) => c.put(request, response.clone()));
+      // Clone BEFORE using the response
+      const responseToCache = response.clone();
+      const cache = await caches.open(DYNAMIC_CACHE);
+      cache.put(request, responseToCache);
     }
     return response;
+  }).catch((error) => {
+    console.log('[SW] Fetch failed in staleWhileRevalidate:', error);
+    // Return cached version if fetch fails
+    return cached;
   });
 
   return cached || fetchPromise;
