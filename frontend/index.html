@@ -30,10 +30,9 @@
     <link rel="stylesheet" href="/css/layout.css">
     <link rel="stylesheet" href="/css/components.css">
     <link rel="stylesheet" href="/css/animations.css">
-    <link rel="stylesheet" href="/css/debug-contrast.css"> <!-- TEMPORARY: Force high contrast -->
+    <link rel="stylesheet" href="/css/debug-contrast.css">
     <link rel="stylesheet" href="/css/auth-tabs.css">
     <link rel="stylesheet" href="/css/user-menu.css">
-    <link rel="stylesheet" href="/css/placeholder.css">
 </head>
 
 <body>
@@ -177,14 +176,14 @@
             <button class="tab-btn active" data-tab="dashboard">
                 <i class="fas fa-chart-line"></i> Dashboard
             </button>
+            <button class="tab-btn" data-tab="subscriptions">
+                <i class="fas fa-sync-alt"></i> Suscripciones
+            </button>
             <button class="tab-btn" data-tab="expenses">
                 <i class="fas fa-list"></i> Gastos
             </button>
             <button class="tab-btn" data-tab="stats">
                 <i class="fas fa-chart-pie"></i> Estadísticas
-            </button>
-            <button class="tab-btn" data-tab="subscriptions">
-                <i class="fas fa-sync-alt"></i> Suscripciones
             </button>
         </nav>
 
@@ -239,6 +238,55 @@
                 </section>
             </div>
 
+            <!-- Subscriptions Tab -->
+            <div id="subscriptionsTab" class="tab-content">
+                <!-- Subscription Summary Cards -->
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #6366F1;">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Total Mensual</span>
+                            <span class="summary-value" id="subscriptionsMonthlyTotal">$0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #F59E0B;">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Total Anual</span>
+                            <span class="summary-value" id="subscriptionsYearlyTotal">$0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #10B981;">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Activas</span>
+                            <span class="summary-value" id="subscriptionsActiveCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Subscriptions -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-sync-alt"></i> Suscripciones activas</h2>
+                    </div>
+
+                    <div id="subscriptionsList" class="expense-list">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Cargando suscripciones...
+                        </div>
+                    </div>
+                </section>
+            </div>
+
             <!-- Expenses Tab -->
             <div id="expensesTab" class="tab-content">
                 <section class="card">
@@ -264,27 +312,57 @@
                 <!-- Monthly Chart -->
                 <section class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-chart-bar"></i> Gastos por categoría (mes actual)</h2>
+                        <h2 class="card-title"><i class="fas fa-chart-pie"></i> Gastos por categoría (mes actual)</h2>
                     </div>
                     <div class="chart-container">
                         <canvas id="categoryChart"></canvas>
                     </div>
                 </section>
 
-                <!-- Yearly Chart -->
+                <!-- Subscriptions by Category Chart -->
                 <section class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-chart-line"></i> Evolución anual</h2>
+                        <h2 class="card-title"><i class="fas fa-sync-alt"></i> Suscripciones por categoría (mes actual)</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="subscriptionsCategoryChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Yearly Comparison Chart -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-chart-bar"></i> Gastos vs Suscripciones (comparación mensual)</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Yearly Evolution Chart -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-chart-line"></i> Evolución anual (gastos totales)</h2>
                     </div>
                     <div class="chart-container">
                         <canvas id="yearlyChart"></canvas>
                     </div>
                 </section>
+
+                <!-- Subscriptions Evolution Chart -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-chart-area"></i> Evolución de suscripciones</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="subscriptionsYearlyChart"></canvas>
+                    </div>
+                </section>
             </div>
         </main>
 
-        <!-- Floating Action Button -->
-        <button class="fab" id="addExpenseBtn" title="Agregar gasto">
+        <!-- Floating Action Button (contextual) -->
+        <button class="fab" id="addBtn" title="Agregar">
             <i class="fas fa-plus"></i>
         </button>
     </div>
@@ -293,10 +371,10 @@
     <div id="expenseModal" class="modal-overlay hidden">
         <div class="modal">
             <div class="modal-header">
-                <h2 class="modal-title" id="modalTitle">
+                <h2 class="modal-title" id="expenseModalTitle">
                     <i class="fas fa-plus-circle"></i> Nuevo Gasto
                 </h2>
-                <button class="btn-close" id="closeModalBtn">
+                <button class="btn-close" id="closeExpenseModalBtn">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -305,50 +383,139 @@
                 <input type="hidden" id="expenseId">
 
                 <div class="form-group">
-                    <label for="monto" class="form-label">
+                    <label for="expenseMonto" class="form-label">
                         <i class="fas fa-dollar-sign"></i> Monto *
                     </label>
-                    <input type="number" id="monto" name="monto" class="form-input" step="0.01" min="0.01" required
+                    <input type="number" id="expenseMonto" name="monto" class="form-input" step="0.01" min="0.01" required
                         placeholder="0.00">
                 </div>
 
                 <div class="form-group">
-                    <label for="descripcion" class="form-label">
+                    <label for="expenseDescripcion" class="form-label">
                         <i class="fas fa-align-left"></i> Descripción *
                     </label>
-                    <input type="text" id="descripcion" name="descripcion" class="form-input" maxlength="255" required
+                    <input type="text" id="expenseDescripcion" name="descripcion" class="form-input" maxlength="255" required
                         placeholder="Ej: Almuerzo">
                 </div>
 
                 <div class="form-group">
-                    <label for="categoria_id" class="form-label">
+                    <label for="expenseCategoriaId" class="form-label">
                         <i class="fas fa-tag"></i> Categoría *
                     </label>
-                    <select id="categoria_id" name="categoria_id" class="form-select" required>
+                    <select id="expenseCategoriaId" name="categoria_id" class="form-select" required>
                         <option value="">Selecciona una categoría</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="fecha" class="form-label">
+                    <label for="expenseFecha" class="form-label">
                         <i class="fas fa-calendar"></i> Fecha *
                     </label>
-                    <input type="date" id="fecha" name="fecha" class="form-input" required>
+                    <input type="date" id="expenseFecha" name="fecha" class="form-input" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="notas" class="form-label">
+                    <label for="expenseNotas" class="form-label">
                         <i class="fas fa-sticky-note"></i> Notas
                     </label>
-                    <textarea id="notas" name="notas" class="form-textarea"
+                    <textarea id="expenseNotas" name="notas" class="form-textarea"
                         placeholder="Notas adicionales (opcional)"></textarea>
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelBtn">
+                    <button type="button" class="btn btn-secondary" id="cancelExpenseBtn">
                         <i class="fas fa-times"></i> Cancelar
                     </button>
                     <button type="submit" class="btn btn-primary" id="saveExpenseBtn">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Subscription Modal -->
+    <div id="subscriptionModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="subscriptionModalTitle">
+                    <i class="fas fa-plus-circle"></i> Nueva Suscripción
+                </h2>
+                <button class="btn-close" id="closeSubscriptionModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="subscriptionForm">
+                <input type="hidden" id="subscriptionId">
+
+                <div class="form-group">
+                    <label for="subscriptionNombre" class="form-label">
+                        <i class="fas fa-signature"></i> Nombre *
+                    </label>
+                    <input type="text" id="subscriptionNombre" name="nombre" class="form-input" maxlength="255" required
+                        placeholder="Ej: Spotify Premium">
+                </div>
+
+                <div class="form-group">
+                    <label for="subscriptionMonto" class="form-label">
+                        <i class="fas fa-dollar-sign"></i> Monto *
+                    </label>
+                    <input type="number" id="subscriptionMonto" name="monto" class="form-input" step="0.01" min="0.01" required
+                        placeholder="0.00">
+                </div>
+
+                <div class="form-group">
+                    <label for="subscriptionCategoriaId" class="form-label">
+                        <i class="fas fa-tag"></i> Categoría *
+                    </label>
+                    <select id="subscriptionCategoriaId" name="categoria_id" class="form-select" required>
+                        <option value="">Selecciona una categoría</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="subscriptionPeriodicidad" class="form-label">
+                        <i class="fas fa-clock"></i> Periodicidad *
+                    </label>
+                    <select id="subscriptionPeriodicidad" name="periodicidad" class="form-select" required>
+                        <option value="mensual" selected>Mensual</option>
+                        <option value="anual">Anual</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="subscriptionFechaInicio" class="form-label">
+                        <i class="fas fa-calendar-plus"></i> Fecha de Inicio
+                    </label>
+                    <input type="date" id="subscriptionFechaInicio" name="fecha_inicio" class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-toggle-on"></i> Estado
+                    </label>
+                    <div class="form-check">
+                        <input type="checkbox" id="subscriptionActivo" name="activo" class="form-checkbox" checked>
+                        <label for="subscriptionActivo" class="form-check-label">
+                            Suscripción activa
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="subscriptionNotas" class="form-label">
+                        <i class="fas fa-sticky-note"></i> Notas
+                    </label>
+                    <textarea id="subscriptionNotas" name="notas" class="form-textarea"
+                        placeholder="Notas adicionales (opcional)"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelSubscriptionBtn">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="saveSubscriptionBtn">
                         <i class="fas fa-save"></i> Guardar
                     </button>
                 </div>
