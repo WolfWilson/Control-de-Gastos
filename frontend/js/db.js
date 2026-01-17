@@ -302,6 +302,24 @@ class DatabaseManager {
             byMonth
         };
     }
+
+    /**
+     * Clear all data from database (for import/restore)
+     */
+    async clearAllData() {
+        const transaction = this.db.transaction(['expenses', 'categories'], 'readwrite');
+
+        const expensesStore = transaction.objectStore('expenses');
+        const categoriesStore = transaction.objectStore('categories');
+
+        await expensesStore.clear();
+        await categoriesStore.clear();
+
+        return new Promise((resolve, reject) => {
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        });
+    }
 }
 
 // Create singleton instance

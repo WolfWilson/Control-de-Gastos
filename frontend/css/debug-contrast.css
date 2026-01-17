@@ -1,0 +1,73 @@
+/* AGGRESSIVE CONTRAST FIXES - INDEPENDENT OF BROWSER MODE */
+
+/* Auth form title - MUST be visible */
+.auth-form h2 {
+    color: #111827 !important;
+    /* Almost black */
+    font-weight: 700 !important;
+    opacity: 1 !important;
+}
+
+/* Auth screen subtitle - MUST be visible */
+.auth-subtitle {
+    color: #111827 !important;
+    /* Almost black instead of light gray */
+    font-weight: 600 !important;
+    /* Bolder */
+    opacity: 1 !important;
+}
+
+/* Summary card labels - MUST be visible */
+.summary-label {
+    color: #111827 !important;
+    /* Almost black */
+    font-weight: 700 !important;
+    /* Extra bold */
+    opacity: 1 !important;
+}
+
+/* Summary card values - MUST be visible */
+.summary-value {
+    color: #000000 !important;
+    /* Pure black */
+    font-weight: 800 !important;
+    /* Extra extra bold */
+}
+
+/* Form labels */
+.form-label {
+    color: #111827 !important;
+    font-weight: 600 !important;
+}
+
+/* Form inputs - TEXT MUST BE VISIBLE */
+.form-input,
+.form-textarea,
+.form-select {
+    color: #F9FAFB !important;
+    /* Light text for dark inputs */
+}
+
+/* Form placeholders */
+.form-input::placeholder,
+.form-textarea::placeholder,
+.form-select::placeholder {
+    color: #6B7280 !important;
+    /* Medium gray for placeholders */
+    opacity: 1 !important;
+}
+
+/* Select options */
+.form-select option {
+    color: #111827 !important;
+    background: white !important;
+}
+
+/* User name in header - MUST be visible */
+.user-welcome {
+    color: white !important;
+}
+
+.user-welcome strong {
+    color: white !important;
+}

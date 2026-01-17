@@ -1,6 +1,7 @@
 import db from './db.js';
 import auth from './auth.js';
-import { formatCurrency, formatDate, getTodayDate, showError, showSuccess, confirm } from './utils.js';
+import dataBackup from './data-backup.js';
+import { formatCurrency, formatDate, getTodayDate, showError, showSuccess, confirm, confirmDanger } from './utils.js';
 
 class ExpenseApp {
     constructor() {
@@ -40,10 +41,26 @@ class ExpenseApp {
     showRegistration() {
         const authScreen = document.getElementById('authScreen');
         const registerForm = document.getElementById('registerForm');
+        const loginForm = document.getElementById('loginForm');
         const registerFormElement = document.getElementById('registerFormElement');
 
         authScreen.classList.remove('hidden');
-        registerForm.classList.remove('hidden');
+
+        // Hide login, show register (only if loginForm exists)
+        if (loginForm) {
+            loginForm.classList.remove('active');
+        }
+        registerForm.classList.add('active');
+
+        // Set register tab as active
+        document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+        const registerTab = document.querySelector('[data-auth-tab="register"]');
+        if (registerTab) {
+            registerTab.classList.add('active');
+        }
+
+        // Setup auth tab switching
+        this.setupAuthTabs();
 
         registerFormElement.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -73,12 +90,29 @@ class ExpenseApp {
     showLogin() {
         const authScreen = document.getElementById('authScreen');
         const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
         const loginFormElement = document.getElementById('loginFormElement');
         const user = auth.getCurrentUser();
 
         authScreen.classList.remove('hidden');
-        loginForm.classList.remove('hidden');
+
+        // Hide register, show login (only if registerForm exists)
+        if (registerForm) {
+            registerForm.classList.remove('active');
+        }
+        loginForm.classList.add('active');
+
+        // Set login tab as active
+        document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+        const loginTab = document.querySelector('[data-auth-tab="login"]');
+        if (loginTab) {
+            loginTab.classList.add('active');
+        }
+
         document.getElementById('loginUserName').textContent = user.nombre;
+
+        // Setup auth tab switching
+        this.setupAuthTabs();
 
         loginFormElement.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -93,6 +127,19 @@ class ExpenseApp {
                 showError(error.message);
                 document.getElementById('loginPin').value = '';
             }
+        });
+    }
+
+    /**
+     * Setup auth tab switching
+     */
+    setupAuthTabs() {
+        const authTabs = document.querySelectorAll('.auth-tab');
+        authTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.authTab;
+                this.switchAuthTab(targetTab);
+            });
         });
     }
 
@@ -113,6 +160,7 @@ class ExpenseApp {
         this.setupElements();
         this.setupEventListeners();
         this.setupTabs();
+        this.setupUserMenu();
         await this.loadCategories();
         await this.loadDashboard();
         await this.loadExpenses();
@@ -127,9 +175,6 @@ class ExpenseApp {
             // Main screens
             mainApp: document.getElementById('mainApp'),
             authScreen: document.getElementById('authScreen'),
-
-            // Header
-            logoutBtn: document.getElementById('logoutBtn'),
 
             // Tabs
             tabBtns: document.querySelectorAll('.tab-btn'),
@@ -177,9 +222,6 @@ class ExpenseApp {
      * Setup event listeners
      */
     setupEventListeners() {
-        // Logout
-        this.elements.logoutBtn.addEventListener('click', () => this.handleLogout());
-
         // Open modal for new expense
         this.elements.addExpenseBtn.addEventListener('click', () => this.openModal());
 
@@ -199,6 +241,28 @@ class ExpenseApp {
 
         // Month filter
         this.elements.monthFilter.addEventListener('change', () => this.filterExpensesByMonth());
+    }
+
+    /**
+     * Switch between login and register tabs
+     */
+    switchAuthTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelector(`[data-auth-tab="${tabName}"]`).classList.add('active');
+
+        // Update forms
+        document.querySelectorAll('.auth-form').forEach(form => {
+            form.classList.remove('active');
+        });
+
+        if (tabName === 'login') {
+            document.getElementById('loginForm').classList.add('active');
+        } else {
+            document.getElementById('registerForm').classList.add('active');
+        }
     }
 
     /**
@@ -486,7 +550,12 @@ class ExpenseApp {
      * Handle expense deletion
      */
     async handleDelete(expenseId) {
-        if (!confirm('¿Estás seguro de que quieres eliminar este gasto?')) {
+        const confirmed = await confirmDanger(
+            '¿Estás seguro de que quieres eliminar este gasto?',
+            'Eliminar Gasto'
+        );
+
+        if (!confirmed) {
             return;
         }
 
@@ -615,7 +684,7 @@ class ExpenseApp {
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 const label = context.label || '';
                                 const value = context.parsed || 0;
                                 return `${label}: ${formatCurrency(value)}`;
@@ -673,7 +742,7 @@ class ExpenseApp {
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 return `Total: ${formatCurrency(context.parsed.y)}`;
                             }
                         }
@@ -683,7 +752,7 @@ class ExpenseApp {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            callback: function(value) {
+                            callback: function (value) {
                                 return '$' + value.toLocaleString();
                             },
                             font: {
@@ -710,10 +779,102 @@ class ExpenseApp {
     }
 
     /**
+     * Setup user menu functionality (Side Drawer)
+     */
+    setupUserMenu() {
+        const menuToggleBtn = document.getElementById('menuToggleBtn');
+        const drawerOverlay = document.getElementById('drawerOverlay');
+        const sideDrawer = document.getElementById('sideDrawer');
+        const drawerCloseBtn = document.getElementById('drawerCloseBtn');
+        const drawerExportBtn = document.getElementById('drawerExportBtn');
+        const drawerImportBtn = document.getElementById('drawerImportBtn');
+        const drawerLogoutBtn = document.getElementById('drawerLogoutBtn');
+        const importFileInput = document.getElementById('importFileInput');
+        const drawerUserName = document.getElementById('drawerUserName');
+
+        // Set user name in drawer
+        const user = auth.getCurrentUser();
+        drawerUserName.textContent = user.nombre;
+
+        // Open drawer
+        const openDrawer = () => {
+            sideDrawer.classList.add('open');
+            drawerOverlay.classList.remove('hidden');
+        };
+
+        // Close drawer
+        const closeDrawer = () => {
+            sideDrawer.classList.remove('open');
+            drawerOverlay.classList.add('hidden');
+        };
+
+        // Toggle drawer
+        menuToggleBtn.addEventListener('click', openDrawer);
+        drawerCloseBtn.addEventListener('click', closeDrawer);
+        drawerOverlay.addEventListener('click', closeDrawer);
+
+        // Export data
+        drawerExportBtn.addEventListener('click', async () => {
+            try {
+                await dataBackup.exportData();
+                showSuccess('Datos exportados exitosamente');
+                closeDrawer();
+            } catch (error) {
+                showError(error.message);
+            }
+        });
+
+        // Import data
+        drawerImportBtn.addEventListener('click', () => {
+            importFileInput.click();
+            closeDrawer();
+        });
+
+        // Handle file selection
+        importFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const confirmed = await confirmDanger(
+                '¿Estás seguro? Esto reemplazará TODOS tus datos actuales con los del archivo.',
+                'Importar Datos'
+            );
+
+            if (!confirmed) {
+                importFileInput.value = '';
+                return;
+            }
+
+            try {
+                await dataBackup.importData(file);
+                showSuccess('Datos importados exitosamente. Recargando...');
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } catch (error) {
+                showError(error.message);
+                importFileInput.value = '';
+            }
+        });
+
+        // Logout
+        drawerLogoutBtn.addEventListener('click', () => {
+            closeDrawer();
+            this.handleLogout();
+        });
+    }
+
+    /**
      * Handle logout
      */
-    handleLogout() {
-        if (!confirm('¿Seguro que quieres cerrar sesión?')) {
+    async handleLogout() {
+        const confirmed = await confirm(
+            '¿Seguro que quieres cerrar sesión?',
+            'Cerrar Sesión'
+        );
+
+        if (!confirmed) {
             return;
         }
 

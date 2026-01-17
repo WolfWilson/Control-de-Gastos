@@ -35,28 +35,66 @@ export const getTodayDate = () => {
 };
 
 /**
- * Show error message to user
+ * Show error message to user (using toast notification)
  * @param {string} message - Error message
  */
 export const showError = (message) => {
-    // Simple alert for MVP, can be replaced with toast notification
-    alert(`Error: ${message}`);
+    // Import toast dynamically to avoid circular dependencies
+    import('./toast.js').then(module => {
+        module.default.error(message);
+    });
 };
 
 /**
- * Show success message to user
+ * Show success message to user (using toast notification)
  * @param {string} message - Success message
  */
 export const showSuccess = (message) => {
-    // Simple alert for MVP, can be replaced with toast notification
-    alert(message);
+    // Import toast dynamically to avoid circular dependencies
+    import('./toast.js').then(module => {
+        module.default.success(message);
+    });
 };
 
 /**
- * Confirm action with user
- * @param {string} message - Confirmation message
- * @returns {boolean} User confirmation
+ * Show warning message to user (using toast notification)
+ * @param {string} message - Warning message
  */
-export const confirm = (message) => {
-    return window.confirm(message);
+export const showWarning = (message) => {
+    import('./toast.js').then(module => {
+        module.default.warning(message);
+    });
+};
+
+/**
+ * Show info message to user (using toast notification)
+ * @param {string} message - Info message
+ */
+export const showInfo = (message) => {
+    import('./toast.js').then(module => {
+        module.default.info(message);
+    });
+};
+
+/**
+ * Confirm action with user (using elegant dialog)
+ * @param {string} message - Confirmation message
+ * @param {string} title - Dialog title (optional)
+ * @returns {Promise<boolean>} User confirmation
+ */
+export const confirm = async (message, title = '¿Estás seguro?') => {
+    // Import confirm dialog dynamically
+    const module = await import('./confirm-dialog.js');
+    return module.default.show({ message, title, type: 'warning' });
+};
+
+/**
+ * Confirm dangerous action (delete, etc.)
+ * @param {string} message - Confirmation message
+ * @param {string} title - Dialog title (optional)
+ * @returns {Promise<boolean>} User confirmation
+ */
+export const confirmDanger = async (message, title = '¡Cuidado!') => {
+    const module = await import('./confirm-dialog.js');
+    return module.default.danger(message, title);
 };
