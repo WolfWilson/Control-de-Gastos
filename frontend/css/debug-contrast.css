@@ -71,3 +71,16 @@
 .user-welcome strong {
     color: white !important;
 }
+
+/* Drawer menu items - TEXT MUST BE VISIBLE */
+.drawer-menu-item {
+    color: #111827 !important;
+}
+
+.drawer-menu-item span {
+    color: #111827 !important;
+}
+
+.drawer-section-title {
+    color: #6B7280 !important;
+}

@@ -150,17 +150,44 @@
             </div>
 
             <div class="drawer-content">
-                <button class="drawer-menu-item" id="drawerExportBtn">
-                    <i class="fas fa-download"></i>
-                    <span>Exportar Datos</span>
-                </button>
+                <!-- Navigation Section -->
+                <div class="drawer-section">
+                    <div class="drawer-section-title">Navegación</div>
 
-                <button class="drawer-menu-item" id="drawerImportBtn">
-                    <i class="fas fa-upload"></i>
-                    <span>Importar Datos</span>
-                </button>
+                    <button class="drawer-menu-item" data-navigate="installments">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Cuotas</span>
+                    </button>
 
-                <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                    <button class="drawer-menu-item" data-navigate="savings">
+                        <i class="fas fa-piggy-bank"></i>
+                        <span>Ahorros</span>
+                    </button>
+
+                    <button class="drawer-menu-item" data-navigate="stats">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Estadísticas</span>
+                    </button>
+                </div>
+
+                <div class="drawer-divider"></div>
+
+                <!-- Data Management Section -->
+                <div class="drawer-section">
+                    <div class="drawer-section-title">Datos</div>
+
+                    <button class="drawer-menu-item" id="drawerExportBtn">
+                        <i class="fas fa-download"></i>
+                        <span>Exportar Datos</span>
+                    </button>
+
+                    <button class="drawer-menu-item" id="drawerImportBtn">
+                        <i class="fas fa-upload"></i>
+                        <span>Importar Datos</span>
+                    </button>
+
+                    <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                </div>
 
                 <div class="drawer-divider"></div>
 
@@ -174,22 +201,13 @@
         <!-- Navigation Tabs -->
         <nav class="tabs-nav">
             <button class="tab-btn active" data-tab="dashboard">
-                <i class="fas fa-chart-line"></i> Dash
+                <i class="fas fa-chart-line"></i> Dashboard
             </button>
             <button class="tab-btn" data-tab="expenses">
                 <i class="fas fa-list"></i> Gastos
             </button>
             <button class="tab-btn" data-tab="subscriptions">
                 <i class="fas fa-sync-alt"></i> Suscripciones
-            </button>
-            <button class="tab-btn" data-tab="installments">
-                <i class="fas fa-credit-card"></i> Cuotas
-            </button>
-            <button class="tab-btn" data-tab="savings">
-                <i class="fas fa-piggy-bank"></i> Ahorros
-            </button>
-            <button class="tab-btn" data-tab="stats">
-                <i class="fas fa-chart-pie"></i> Stats
             </button>
         </nav>
 

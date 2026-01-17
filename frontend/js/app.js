@@ -1427,6 +1427,16 @@ class ExpenseApp {
         drawerCloseBtn.addEventListener('click', closeDrawer);
         drawerOverlay.addEventListener('click', closeDrawer);
 
+        // Navigation items (Cuotas, Ahorros, Estadísticas)
+        const navItems = document.querySelectorAll('[data-navigate]');
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const tabName = item.getAttribute('data-navigate');
+                this.switchTab(tabName);
+                closeDrawer();
+            });
+        });
+
         // Export data
         drawerExportBtn.addEventListener('click', async () => {
             try {
