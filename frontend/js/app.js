@@ -988,6 +988,12 @@ class ExpenseApp {
      * Render category pie chart
      */
     renderCategoryChart(categoryData) {
+        // Check if canvas exists
+        if (!this.elements.categoryChart) {
+            console.log('[Chart] Category chart canvas not found, skipping render');
+            return;
+        }
+
         const ctx = this.elements.categoryChart.getContext('2d');
 
         // Destroy existing chart
@@ -1052,6 +1058,12 @@ class ExpenseApp {
      * Render yearly line chart (only up to current month)
      */
     renderYearlyChart(monthlyData) {
+        // Check if canvas exists
+        if (!this.elements.yearlyChart) {
+            console.log('[Chart] Yearly chart canvas not found, skipping render');
+            return;
+        }
+
         const ctx = this.elements.yearlyChart.getContext('2d');
 
         // Destroy existing chart
@@ -1142,6 +1154,12 @@ class ExpenseApp {
      * Render subscriptions by category pie chart
      */
     renderSubscriptionsCategoryChart(categoryData) {
+        // Check if canvas exists (stats tab might not be loaded yet)
+        if (!this.elements.subscriptionsCategoryChart) {
+            console.log('[Chart] Subscriptions category chart canvas not found, skipping render');
+            return;
+        }
+
         const ctx = this.elements.subscriptionsCategoryChart.getContext('2d');
 
         // Destroy existing chart
@@ -1212,6 +1230,12 @@ class ExpenseApp {
      * Render expenses vs subscriptions comparison bar chart
      */
     renderComparisonChart(comparisonData) {
+        // Check if canvas exists
+        if (!this.elements.comparisonChart) {
+            console.log('[Chart] Comparison chart canvas not found, skipping render');
+            return;
+        }
+
         const ctx = this.elements.comparisonChart.getContext('2d');
 
         // Destroy existing chart
@@ -1310,6 +1334,12 @@ class ExpenseApp {
      * Render subscriptions yearly evolution line chart
      */
     renderSubscriptionsYearlyChart(monthlyData, maxMonth) {
+        // Check if canvas exists
+        if (!this.elements.subscriptionsYearlyChart) {
+            console.log('[Chart] Subscriptions yearly chart canvas not found, skipping render');
+            return;
+        }
+
         const ctx = this.elements.subscriptionsYearlyChart.getContext('2d');
 
         // Destroy existing chart
