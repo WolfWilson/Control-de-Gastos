@@ -63,7 +63,9 @@ class ExpenseApp {
         if (loginForm) {
             loginForm.classList.remove('active');
         }
-        registerForm.classList.add('active');
+        if (registerForm) {
+            registerForm.classList.add('active');
+        }
 
         // Set register tab as active
         document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
@@ -276,6 +278,27 @@ class ExpenseApp {
             installmentActivo: document.getElementById('installmentActivo'),
             installmentNotas: document.getElementById('installmentNotas'),
 
+            // Savings tab
+            savingsTotalActive: document.getElementById('savingsTotalActive'),
+            savingsActiveCount: document.getElementById('savingsActiveCount'),
+            savingsList: document.getElementById('savingsList'),
+
+            // Saving Modal
+            savingModal: document.getElementById('savingModal'),
+            savingModalTitle: document.getElementById('savingModalTitle'),
+            closeSavingModalBtn: document.getElementById('closeSavingModalBtn'),
+            savingForm: document.getElementById('savingForm'),
+            cancelSavingBtn: document.getElementById('cancelSavingBtn'),
+            saveSavingBtn: document.getElementById('saveSavingBtn'),
+
+            // Saving Form fields
+            savingId: document.getElementById('savingId'),
+            savingNombre: document.getElementById('savingNombre'),
+            savingMonto: document.getElementById('savingMonto'),
+            savingTipo: document.getElementById('savingTipo'),
+            savingActivo: document.getElementById('savingActivo'),
+            savingNotas: document.getElementById('savingNotas'),
+
             // Charts
             categoryChart: document.getElementById('categoryChart'),
             subscriptionsCategoryChart: document.getElementById('subscriptionsCategoryChart'),
@@ -330,6 +353,16 @@ class ExpenseApp {
         // Auto-calculate installment amount when changing total or cuotas
         this.elements.installmentMontoTotal.addEventListener('input', () => this.calculateInstallmentAmount());
         this.elements.installmentTotalCuotas.addEventListener('input', () => this.calculateInstallmentAmount());
+
+        // Saving Modal
+        this.elements.closeSavingModalBtn.addEventListener('click', () => this.closeSavingModal());
+        this.elements.cancelSavingBtn.addEventListener('click', () => this.closeSavingModal());
+        this.elements.savingModal.addEventListener('click', (e) => {
+            if (e.target === this.elements.savingModal) {
+                this.closeSavingModal();
+            }
+        });
+        this.elements.savingForm.addEventListener('submit', (e) => this.handleSavingSubmit(e));
 
         // Month filter
         this.elements.monthFilter.addEventListener('change', () => this.filterExpensesByMonth());
@@ -400,6 +433,8 @@ class ExpenseApp {
             await this.loadSubscriptions();
         } else if (tabName === 'installments') {
             await this.loadInstallments();
+        } else if (tabName === 'savings') {
+            await this.loadSavings();
         } else if (tabName === 'expenses') {
             await this.loadAllExpenses();
             this.populateMonthFilter();
@@ -420,6 +455,9 @@ class ExpenseApp {
         } else if (this.currentTab === 'installments') {
             icon.className = 'fas fa-credit-card';
             this.elements.addBtn.title = 'Agregar cuota';
+        } else if (this.currentTab === 'savings') {
+            icon.className = 'fas fa-piggy-bank';
+            this.elements.addBtn.title = 'Agregar ahorro';
         } else {
             icon.className = 'fas fa-plus';
             this.elements.addBtn.title = 'Agregar gasto';
@@ -434,6 +472,8 @@ class ExpenseApp {
             this.openSubscriptionModal();
         } else if (this.currentTab === 'installments') {
             this.openInstallmentModal();
+        } else if (this.currentTab === 'savings') {
+            this.openSavingModal();
         } else {
             this.openExpenseModal();
         }
@@ -741,13 +781,23 @@ class ExpenseApp {
      * Render empty state
      */
     renderEmptyState(container, type = 'gastos') {
-        const icon = type === 'suscripciones' ? 'fa-sync-alt' : 'fa-receipt';
-        const message = type === 'suscripciones'
-            ? 'No hay suscripciones registradas'
-            : 'No hay gastos registrados';
-        const hint = type === 'suscripciones'
-            ? 'Haz clic en el botón + para agregar tu primera suscripción'
-            : 'Haz clic en el botón + para agregar tu primer gasto';
+        let icon = 'fa-receipt';
+        let message = 'No hay gastos registrados';
+        let hint = 'Haz clic en el botón + para agregar tu primer gasto';
+
+        if (type === 'suscripciones') {
+            icon = 'fa-sync-alt';
+            message = 'No hay suscripciones registradas';
+            hint = 'Haz clic en el botón + para agregar tu primera suscripción';
+        } else if (type === 'installments') {
+            icon = 'fa-credit-card';
+            message = 'No hay cuotas registradas';
+            hint = 'Haz clic en el botón + para agregar tu primera compra en cuotas';
+        } else if (type === 'savings') {
+            icon = 'fa-piggy-bank';
+            message = 'No hay ahorros registrados';
+            hint = 'Haz clic en el botón + para registrar tu primer ahorro';
+        }
 
         container.innerHTML = `
             <div class="empty-state">
@@ -1216,6 +1266,215 @@ class ExpenseApp {
         } catch (error) {
             console.error('Error deleting installment:', error);
             showError('Error al eliminar la cuota');
+        }
+    }
+
+    // ========================================
+    // SAVING MODAL METHODS
+    // ========================================
+
+    /**
+     * Load savings
+     */
+    async loadSavings() {
+        try {
+            this.savings = await db.getAllSavings();
+
+            // Update summary cards
+            const summary = await db.getSavingsSummary();
+            this.elements.savingsTotalActive.textContent = formatCurrency(summary.totalActivo);
+            this.elements.savingsActiveCount.textContent = summary.count;
+
+            // Render savings list
+            this.renderSavings(this.elements.savingsList, this.savings);
+        } catch (error) {
+            console.error('Error loading savings:', error);
+            this.renderEmptyState(this.elements.savingsList, 'savings');
+        }
+    }
+
+    /**
+     * Render savings list
+     */
+    renderSavings(container, savings) {
+        if (savings.length === 0) {
+            this.renderEmptyState(container, 'savings');
+            return;
+        }
+
+        container.innerHTML = '';
+
+        savings.forEach(saving => {
+            const item = this.createSavingItem(saving);
+            container.appendChild(item);
+        });
+    }
+
+    /**
+     * Create saving list item element
+     */
+    createSavingItem(saving) {
+        const item = document.createElement('div');
+        item.className = 'expense-item saving-item';
+        item.dataset.savingId = saving.id;
+
+        // Add class for inactive savings
+        if (!saving.activo) {
+            item.classList.add('saving-inactive');
+        }
+
+        // Get tipo icon and label
+        const tipoInfo = {
+            'efectivo': { icon: 'fas fa-money-bill-wave', label: 'Efectivo' },
+            'banco': { icon: 'fas fa-university', label: 'Banco' },
+            'inversion': { icon: 'fas fa-chart-line', label: 'Inversión' },
+            'otro': { icon: 'fas fa-piggy-bank', label: 'Otro' }
+        };
+        const tipo = tipoInfo[saving.tipo] || tipoInfo['otro'];
+
+        item.innerHTML = `
+            <div class="expense-info">
+                <div class="expense-description">
+                    ${saving.nombre}
+                    ${!saving.activo ? '<span class="badge badge-inactive">Inactiva</span>' : ''}
+                </div>
+                <div class="expense-meta">
+                    <span class="expense-category">
+                        <i class="${tipo.icon} fa-sm"></i> ${tipo.label}
+                    </span>
+                </div>
+            </div>
+            <div class="expense-amount">
+                ${formatCurrency(saving.monto)}
+            </div>
+            <div class="expense-actions">
+                <button class="btn-icon" data-action="edit" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-icon" data-action="delete" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+
+        // Event listeners for actions
+        const editBtn = item.querySelector('[data-action="edit"]');
+        const deleteBtn = item.querySelector('[data-action="delete"]');
+
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.editSaving(saving.id);
+        });
+
+        deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await this.deleteSaving(saving.id);
+        });
+
+        return item;
+    }
+
+    /**
+     * Edit saving
+     */
+    editSaving(savingId) {
+        const saving = this.savings.find(s => s.id === savingId);
+        if (saving) {
+            this.openSavingModal(saving);
+        }
+    }
+
+    /**
+     * Delete saving
+     */
+    async deleteSaving(savingId) {
+        const confirmed = await confirmDanger(
+            '¿Estás seguro de que deseas eliminar este ahorro? Esta acción no se puede deshacer.',
+            'Eliminar Ahorro'
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            await db.deleteSaving(savingId);
+            showSuccess('Ahorro eliminado exitosamente');
+            await this.loadDashboard();
+            await this.switchTab(this.currentTab);
+        } catch (error) {
+            console.error('Error deleting saving:', error);
+            showError('Error al eliminar el ahorro');
+        }
+    }
+
+    /**
+     * Open modal for add/edit saving
+     */
+    openSavingModal(saving = null) {
+        this.currentEditSavingId = saving ? saving.id : null;
+
+        if (saving) {
+            // Edit mode
+            this.elements.savingModalTitle.innerHTML = '<i class="fas fa-edit"></i> Editar Ahorro';
+            this.elements.savingId.value = saving.id;
+            this.elements.savingNombre.value = saving.nombre;
+            this.elements.savingMonto.value = saving.monto;
+            this.elements.savingTipo.value = saving.tipo;
+            this.elements.savingActivo.checked = saving.activo;
+            this.elements.savingNotas.value = saving.notas || '';
+        } else {
+            // Create mode
+            this.elements.savingModalTitle.innerHTML = '<i class="fas fa-plus-circle"></i> Nuevo Ahorro';
+            this.elements.savingForm.reset();
+            this.elements.savingActivo.checked = true;
+            this.elements.savingTipo.value = 'efectivo';
+            this.elements.savingMonto.value = '0';
+        }
+
+        this.elements.savingModal.classList.remove('hidden');
+    }
+
+    /**
+     * Close saving modal
+     */
+    closeSavingModal() {
+        this.elements.savingModal.classList.add('hidden');
+        this.elements.savingForm.reset();
+        this.currentEditSavingId = null;
+    }
+
+    /**
+     * Handle saving form submit
+     */
+    async handleSavingSubmit(e) {
+        e.preventDefault();
+
+        const savingData = {
+            nombre: this.elements.savingNombre.value,
+            monto: parseFloat(this.elements.savingMonto.value),
+            tipo: this.elements.savingTipo.value,
+            activo: this.elements.savingActivo.checked,
+            notas: this.elements.savingNotas.value || null
+        };
+
+        try {
+            if (this.currentEditSavingId) {
+                // Update existing saving
+                await db.updateSaving(this.currentEditSavingId, savingData);
+                showSuccess('Ahorro actualizado exitosamente');
+            } else {
+                // Create new saving
+                await db.createSaving(savingData);
+                showSuccess('Ahorro creado exitosamente');
+            }
+
+            this.closeSavingModal();
+            await this.loadDashboard();
+            await this.switchTab(this.currentTab);
+        } catch (error) {
+            console.error('Error saving saving:', error);
+            showError('Error al guardar el ahorro');
         }
     }
 
