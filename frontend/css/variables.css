@@ -1,49 +1,68 @@
 :root {
-    /* Colors - Modern palette */
-    --color-primary: #6366F1;
-    --color-primary-dark: #4F46E5;
-    --color-primary-light: #818CF8;
-    --color-secondary: #10B981;
-    --color-secondary-dark: #059669;
-    --color-danger: #EF4444;
-    --color-danger-dark: #DC2626;
-    --color-warning: #F59E0B;
-    --color-warning-dark: #D97706;
-    --color-info: #3B82F6;
-    --color-success: #10B981;
+    /* Cyberpunk Color Palette - Celeste & Cyan Theme */
+    --color-primary: #06B6D4;        /* Cyan 500 - Main accent */
+    --color-primary-dark: #0891B2;   /* Cyan 600 - Darker shade */
+    --color-primary-light: #22D3EE;  /* Cyan 400 - Lighter shade */
+    --color-secondary: #8B5CF6;      /* Purple 500 - Secondary accent */
+    --color-secondary-dark: #7C3AED; /* Purple 600 */
+    --color-secondary-light: #A78BFA;/* Purple 400 */
+    --color-accent: #EC4899;         /* Pink 500 - Vibrant accent */
+    --color-accent-light: #F472B6;   /* Pink 400 */
 
-    /* Text colors - Improved contrast for WCAG AA compliance */
-    --color-text-primary: #111827;
-    /* For main headings and amounts - Ratio 16:1 */
-    --color-text-secondary: #374151;
-    /* For labels and subtitles - Ratio 10:1 */
-    --color-text-tertiary: #6B7280;
-    /* For metadata - Ratio 4.6:1 */
-    --color-text-muted: #9CA3AF;
-    /* For disabled/placeholder - Ratio 2.8:1 */
+    --color-danger: #F43F5E;         /* Rose 500 - Neon red */
+    --color-danger-dark: #E11D48;    /* Rose 600 */
+    --color-warning: #F59E0B;        /* Amber 500 */
+    --color-warning-dark: #D97706;   /* Amber 600 */
+    --color-info: #06B6D4;           /* Cyan 500 */
+    --color-success: #10B981;        /* Emerald 500 */
+
+    /* Gradient Definitions - Cyberpunk Style */
+    --gradient-primary: linear-gradient(135deg, #06B6D4 0%, #8B5CF6 100%);
+    --gradient-secondary: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+    --gradient-accent: linear-gradient(135deg, #22D3EE 0%, #A78BFA 50%, #F472B6 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    --gradient-dark: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
+
+    /* Neon Glow Colors */
+    --glow-cyan: 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.3);
+    --glow-purple: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.3);
+    --glow-pink: 0 0 20px rgba(236, 72, 153, 0.5), 0 0 40px rgba(236, 72, 153, 0.3);
+
+    /* Text colors - High contrast for readability */
+    --color-text-primary: #0F172A;      /* Slate 900 - Main text */
+    --color-text-secondary: #334155;    /* Slate 700 - Secondary */
+    --color-text-tertiary: #64748B;     /* Slate 500 - Tertiary */
+    --color-text-muted: #94A3B8;        /* Slate 400 - Muted */
+    --color-text-on-dark: #F1F5F9;      /* Slate 100 - Text on dark backgrounds */
 
     /* Legacy support - map to new variables */
     --color-text: var(--color-text-primary);
     --color-text-light: var(--color-text-tertiary);
     --color-text-lighter: var(--color-text-muted);
 
-    /* Background colors */
+    /* Background colors - Light theme with subtle gradient */
     --color-bg: #FFFFFF;
-    --color-bg-secondary: #F9FAFB;
-    --color-bg-tertiary: #F3F4F6;
+    --color-bg-secondary: #F8FAFC;      /* Slate 50 */
+    --color-bg-tertiary: #F1F5F9;       /* Slate 100 */
+    --color-bg-gradient: linear-gradient(180deg, #F8FAFC 0%, #E0F2FE 100%);
 
-    /* Border colors */
-    --color-border: #E5E7EB;
-    --color-border-light: #F3F4F6;
+    /* Border colors with subtle cyan tint */
+    --color-border: #E2E8F0;            /* Slate 200 */
+    --color-border-light: #F1F5F9;      /* Slate 100 */
+    --color-border-glow: rgba(6, 182, 212, 0.3);
 
-    /* Shadow colors */
-    --color-shadow: rgba(0, 0, 0, 0.1);
-    --color-shadow-dark: rgba(0, 0, 0, 0.2);
+    /* Shadow colors with colored shadows */
+    --color-shadow: rgba(6, 182, 212, 0.15);
+    --color-shadow-dark: rgba(6, 182, 212, 0.3);
+    --color-shadow-purple: rgba(139, 92, 246, 0.2);
 
-    /* Glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.3);
-    --glass-shadow: rgba(31, 38, 135, 0.15);
+    /* Enhanced Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-bg-strong: rgba(255, 255, 255, 0.9);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-shadow: 0 8px 32px 0 rgba(6, 182, 212, 0.2);
+    --glass-blur: blur(12px);
+    --glass-blur-strong: blur(20px);
 
     /* Spacing */
     --spacing-xs: 0.25rem;
@@ -125,31 +144,32 @@
     --breakpoint-xl: 1280px;
 }
 
-/* Dark mode support (optional for future) */
+/* Dark mode - Desactivado para usar tema claro fijo */
+/*
 @media (prefers-color-scheme: dark) {
     :root {
-        /* Dark mode text - Better contrast */
-        --color-text-primary: #F9FAFB;
-        /* Ratio 15:1 on dark bg */
-        --color-text-secondary: #E5E7EB;
-        /* Ratio 12:1 on dark bg */
-        --color-text-tertiary: #D1D5DB;
-        /* Ratio 8:1 on dark bg */
-        --color-text-muted: #9CA3AF;
-        /* Ratio 4.5:1 on dark bg */
+        --color-text-primary: #F1F5F9;
+        --color-text-secondary: #CBD5E1;
+        --color-text-tertiary: #94A3B8;
+        --color-text-muted: #64748B;
 
-        /* Dark mode backgrounds */
-        --color-bg: #111827;
-        --color-bg-secondary: #1F2937;
-        --color-bg-tertiary: #374151;
+        --color-bg: #0F172A;
+        --color-bg-secondary: #1E293B;
+        --color-bg-tertiary: #334155;
+        --color-bg-gradient: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
 
-        /* Dark mode borders */
-        --color-border: #374151;
-        --color-border-light: #4B5563;
+        --color-border: #334155;
+        --color-border-light: #475569;
+        --color-border-glow: rgba(6, 182, 212, 0.5);
 
-        /* Dark mode glassmorphism */
-        --glass-bg: rgba(31, 41, 55, 0.7);
-        --glass-border: rgba(75, 85, 99, 0.3);
-        --glass-shadow: rgba(0, 0, 0, 0.3);
+        --glass-bg: rgba(30, 41, 59, 0.8);
+        --glass-bg-strong: rgba(30, 41, 59, 0.95);
+        --glass-border: rgba(148, 163, 184, 0.2);
+        --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+
+        --glow-cyan: 0 0 30px rgba(6, 182, 212, 0.7), 0 0 60px rgba(6, 182, 212, 0.4);
+        --glow-purple: 0 0 30px rgba(139, 92, 246, 0.7), 0 0 60px rgba(139, 92, 246, 0.4);
+        --glow-pink: 0 0 30px rgba(236, 72, 153, 0.7), 0 0 60px rgba(236, 72, 153, 0.4);
     }
 }
+*/
