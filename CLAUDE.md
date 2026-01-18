@@ -6,11 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Progressive Web App (PWA)** for personal expense tracking - **100% offline-first architecture**.
 
-The app runs entirely in the browser with no backend server. All data is stored locally using IndexedDB. Mobile-first design with modern UI (glassmorphism, animations) and WCAG AA accessibility compliance.
+The app runs entirely in the browser with no backend server. All data is stored locally using IndexedDB. Mobile-first design with **cyberpunk-inspired UI** featuring glassmorphism, gradient effects, and subtle animations. Fixed light theme for consistent user experience.
 
 **Stack**: Vanilla JavaScript ES6+ modules, CSS3 Custom Properties, HTML5, IndexedDB, Service Worker
 
 **Language**: Spanish for UI text and user-facing content, English for code identifiers and technical documentation.
+
+**Design Style**: Cyberpunk/futuristic with cyan-purple-pink color palette, glass-morphic components, neon glow effects, and animated gradients.
 
 ## Project Structure
 
@@ -283,6 +285,49 @@ async createExpense(expenseData) { }
 - `categoria_id` (for filtering by category)
 - `fecha_creacion` (for recent expenses)
 
+### `savings` Object Store
+
+**Purpose**: Savings accounts tracking
+
+```javascript
+{
+  id: number,                      // Auto-increment primary key
+  nombre: string,                  // Savings account name
+  monto: number,                   // Current amount saved
+  tipo: string,                    // Type: 'efectivo', 'banco', 'inversion', 'otro'
+  activo: boolean,                 // Is active
+  notas: string | null,            // Optional notes
+  fecha_creacion: string,          // ISO 8601 timestamp
+  fecha_actualizacion: string | null  // ISO 8601 timestamp or null
+}
+```
+
+**Indexes**:
+- `tipo` (for filtering by type)
+- `activo` (for active savings)
+- `fecha_actualizacion` (for recent updates)
+
+### `saving_movements` Object Store
+
+**Purpose**: Track deposits and withdrawals from savings accounts
+
+```javascript
+{
+  id: number,                      // Auto-increment primary key
+  saving_id: number,               // FK to savings.id
+  tipo_movimiento: string,         // 'deposito' or 'retiro'
+  monto: number,                   // Amount of movement
+  descripcion: string,             // Description
+  fecha: string,                   // Date YYYY-MM-DD
+  fecha_creacion: string           // ISO 8601 timestamp
+}
+```
+
+**Indexes**:
+- `saving_id` (for movements by saving account)
+- `tipo_movimiento` (for filtering deposits/withdrawals)
+- `fecha` (for date range queries)
+
 ## Development Workflow
 
 ### Local Development
@@ -341,6 +386,12 @@ request.onupgradeneeded = (event) => {
 - [ ] Add new expense
 - [ ] Edit existing expense
 - [ ] Delete expense (with confirmation)
+- [ ] Add new subscription
+- [ ] Edit/delete subscription
+- [ ] Add new installment
+- [ ] Edit/delete installment
+- [ ] Add new saving account
+- [ ] Edit/delete saving account
 - [ ] Filter expenses by month
 - [ ] View statistics charts
 - [ ] Export data (downloads JSON)
@@ -348,6 +399,8 @@ request.onupgradeneeded = (event) => {
 - [ ] Logout and login again
 - [ ] PWA installation
 - [ ] Offline functionality
+- [ ] Test all tabs (Dashboard, Gastos, Suscripciones, Cuotas, Ahorros, Estadísticas)
+- [ ] Verify FAB button changes icon per tab (plus, sync, credit-card, piggy-bank)
 
 **Future**: Consider Playwright or Cypress for E2E testing
 
@@ -398,17 +451,45 @@ const DYNAMIC_CACHE = 'dynamic-v2.0';
 
 ### CSS Custom Properties (`variables.css`)
 
-**Design Tokens**:
+**Design Tokens - Cyberpunk Theme**:
 ```css
 :root {
-  /* Colors */
-  --color-primary: #6366F1;
-  --color-secondary: #10B981;
-  --color-danger: #EF4444;
+  /* Cyberpunk Color Palette */
+  --color-primary: #06B6D4;        /* Cyan 500 - Main accent */
+  --color-primary-dark: #0891B2;   /* Cyan 600 */
+  --color-primary-light: #22D3EE;  /* Cyan 400 */
+  --color-secondary: #8B5CF6;      /* Purple 500 - Secondary accent */
+  --color-secondary-dark: #7C3AED; /* Purple 600 */
+  --color-accent: #EC4899;         /* Pink 500 - Vibrant accent */
 
-  /* Text (WCAG AA) */
-  --color-text-primary: #111827;
-  --color-text-secondary: #374151;
+  /* Gradient Definitions */
+  --gradient-primary: linear-gradient(135deg, #06B6D4 0%, #8B5CF6 100%);
+  --gradient-secondary: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+  --gradient-accent: linear-gradient(135deg, #22D3EE 0%, #A78BFA 50%, #F472B6 100%);
+
+  /* Neon Glow Effects */
+  --glow-cyan: 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(6, 182, 212, 0.3);
+  --glow-purple: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.3);
+  --glow-pink: 0 0 20px rgba(236, 72, 153, 0.5), 0 0 40px rgba(236, 72, 153, 0.3);
+
+  /* Text Colors */
+  --color-text-primary: #0F172A;   /* Slate 900 - Main text */
+  --color-text-secondary: #334155; /* Slate 700 - Secondary */
+  --color-text-tertiary: #64748B;  /* Slate 500 - Tertiary */
+  --color-text-muted: #94A3B8;     /* Slate 400 - Muted */
+
+  /* Background */
+  --color-bg: #FFFFFF;
+  --color-bg-secondary: #F8FAFC;
+  --color-bg-gradient: linear-gradient(180deg, #F8FAFC 0%, #E0F2FE 100%);
+
+  /* Enhanced Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-bg-strong: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px 0 rgba(6, 182, 212, 0.2);
+  --glass-blur: blur(12px);
+  --glass-blur-strong: blur(20px);
 
   /* Spacing (8px scale) */
   --spacing-xs: 0.25rem;  /* 4px */
@@ -420,17 +501,14 @@ const DYNAMIC_CACHE = 'dynamic-v2.0';
   --font-family: 'Montserrat', system-ui, sans-serif;
   --font-size-base: 1rem;
 
-  /* Glassmorphism */
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.3);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-
   /* Transitions */
   --transition-fast: 150ms;
   --transition-base: 200ms;
   --transition-slow: 300ms;
 }
 ```
+
+**IMPORTANT - Dark Mode**: The dark mode `@media (prefers-color-scheme: dark)` is **DISABLED** (commented out) to maintain a consistent light theme across all devices and browsers. The app uses a fixed light cyberpunk theme.
 
 ## Code Quality Standards
 
@@ -800,6 +878,87 @@ This bilingual approach maintains technical clarity while respecting the user's 
 
 ---
 
+## Design System & Critical Fixes
+
+### Cyberpunk Visual Design
+
+The app features a **cyberpunk/futuristic aesthetic** with the following characteristics:
+
+**Color Scheme**:
+- **Primary**: Cyan (#06B6D4) - Main interactive elements
+- **Secondary**: Purple (#8B5CF6) - Accents and secondary actions
+- **Accent**: Pink (#EC4899) - Highlights and special elements
+- **Gradients**: Smooth transitions between cyan → purple → pink
+
+**Visual Effects**:
+- **Glassmorphism**: Translucent backgrounds with backdrop blur on cards, modals, and navigation
+- **Neon Glows**: Subtle glow effects on interactive elements (buttons, FAB, active tabs)
+- **Animated Gradients**: Slow-moving radial gradients in the background
+- **Subtle Animations**: Hover effects, shimmer on FAB button, smooth transitions
+
+**Key Components Styling**:
+- **Summary Cards**: Glass-morphic with gradient overlay on hover, animated entrance
+- **FAB (Floating Action Button)**: Gradient background with pulsing glow effect and rotating shimmer
+- **Buttons**: Primary buttons use gradient backgrounds with sweep light effect on hover
+- **Forms**: Glass-morphic inputs with cyan glow on focus
+- **Header**: Translucent glass background with gradient text logo
+- **Tabs**: Glass background with animated gradient underline on active tab
+- **Auth Screen**: Full gradient background with floating particle effects
+
+### CRITICAL: Input Text Visibility Fix
+
+**Problem**: Input and textarea text was invisible (white text on white background) due to browser autofill styles overriding CSS variables.
+
+**Solution Applied** (in `base.css` and `components.css`):
+
+```css
+/* MUST use hardcoded colors, not CSS variables, for autofill compatibility */
+input, textarea, select {
+    color: #0F172A !important;              /* Dark text */
+    background-color: #FFFFFF !important;   /* White background */
+}
+
+/* Critical: Override browser autofill styles */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+    -webkit-text-fill-color: #0F172A !important;
+    -webkit-box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
+    box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
+    background-color: #FFFFFF !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+```
+
+**Why This Works**:
+- Browser autofill has very high CSS specificity
+- The `box-shadow inset` trick forces white background even with autofill
+- `-webkit-text-fill-color` overrides the browser's default text color
+- Hardcoded hex colors (#0F172A, #FFFFFF) instead of CSS variables work reliably across all browsers
+
+**DO NOT**:
+- ❌ Remove `!important` flags - they are necessary
+- ❌ Replace hardcoded colors with CSS variables - browsers don't respect variables in autofill pseudo-selectors
+- ❌ Remove the box-shadow hack - it's the only way to override autofill background
+
+### Animation Guidelines
+
+**Subtle Animations**: All animations should be subtle and non-intrusive:
+- ✅ Background gradient shifts (20s duration)
+- ✅ FAB pulse and shimmer (3s+ durations)
+- ✅ Hover effects on cards
+- ❌ **AVOID** shimmer effects on static icons (removed as it was too distracting)
+
+### Browser Compatibility Notes
+
+**Tested on**: Chrome, Firefox, Edge, Safari
+**Known Issues**: None currently
+**Performance**: All animations use CSS transforms and opacity for GPU acceleration
+
+---
+
 **Last Updated**: January 2026
-**Project Version**: 2.1.0 (Offline Complete + Backup + Side Drawer)
+**Project Version**: 2.2.0 (Cyberpunk Design + Input Visibility Fix)
 **Architecture**: 100% Frontend Offline-First PWA
