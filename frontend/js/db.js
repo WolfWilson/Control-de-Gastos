@@ -1,10 +1,10 @@
 /**
  * IndexedDB Manager - Local database for offline functionality
- * Version 2.0 - Includes subscriptions management
+ * Version 4.0 - Includes subscriptions, installments and savings management
  */
 
 const DB_NAME = 'ExpenseTrackerDB';
-const DB_VERSION = 2;
+const DB_VERSION = 4;
 
 class DatabaseManager {
     constructor() {
@@ -105,6 +105,73 @@ class DatabaseManager {
                     });
                     historyStore.createIndex('subscription_id', 'subscription_id', { unique: false });
                     historyStore.createIndex('fecha_cambio', 'fecha_cambio', { unique: false });
+                }
+
+                // === INSTALLMENTS STORE ===
+                if (!db.objectStoreNames.contains('installments')) {
+                    const installmentStore = db.createObjectStore('installments', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    installmentStore.createIndex('activo', 'activo', { unique: false });
+                    installmentStore.createIndex('categoria_id', 'categoria_id', { unique: false });
+                    installmentStore.createIndex('fecha_creacion', 'fecha_creacion', { unique: false });
+                }
+
+                // === INSTALLMENT CATEGORIES STORE ===
+                if (!db.objectStoreNames.contains('installment_categories')) {
+                    const installmentCategoryStore = db.createObjectStore('installment_categories', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    installmentCategoryStore.createIndex('nombre', 'nombre', { unique: true });
+
+                    // Insert default installment categories IMMEDIATELY
+                    const defaultInstallmentCategories = [
+                        { nombre: 'Electrónica', icono: 'fa-laptop', color: '#6366F1', activo: true, tipo: 'installment' },
+                        { nombre: 'Electrodomésticos', icono: 'fa-kitchen-set', color: '#10B981', activo: true, tipo: 'installment' },
+                        { nombre: 'Muebles', icono: 'fa-couch', color: '#F59E0B', activo: true, tipo: 'installment' },
+                        { nombre: 'Vehículos', icono: 'fa-car', color: '#3B82F6', activo: true, tipo: 'installment' },
+                        { nombre: 'Educación', icono: 'fa-graduation-cap', color: '#8B5CF6', activo: true, tipo: 'installment' },
+                        { nombre: 'Viajes', icono: 'fa-plane', color: '#EC4899', activo: true, tipo: 'installment' },
+                        { nombre: 'Otros', icono: 'fa-box', color: '#6B7280', activo: true, tipo: 'installment' }
+                    ];
+
+                    // Insert immediately using the same transaction
+                    defaultInstallmentCategories.forEach(cat => installmentCategoryStore.add(cat));
+                }
+
+                // === INSTALLMENT PAYMENTS STORE ===
+                if (!db.objectStoreNames.contains('installment_payments')) {
+                    const paymentsStore = db.createObjectStore('installment_payments', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    paymentsStore.createIndex('installment_id', 'installment_id', { unique: false });
+                    paymentsStore.createIndex('numero_cuota', 'numero_cuota', { unique: false });
+                    paymentsStore.createIndex('pagado', 'pagado', { unique: false });
+                }
+
+                // === SAVINGS STORE ===
+                if (!db.objectStoreNames.contains('savings')) {
+                    const savingsStore = db.createObjectStore('savings', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    savingsStore.createIndex('tipo', 'tipo', { unique: false });
+                    savingsStore.createIndex('activo', 'activo', { unique: false });
+                    savingsStore.createIndex('fecha_actualizacion', 'fecha_actualizacion', { unique: false });
+                }
+
+                // === SAVING MOVEMENTS STORE ===
+                if (!db.objectStoreNames.contains('saving_movements')) {
+                    const movementsStore = db.createObjectStore('saving_movements', {
+                        keyPath: 'id',
+                        autoIncrement: true
+                    });
+                    movementsStore.createIndex('saving_id', 'saving_id', { unique: false });
+                    movementsStore.createIndex('tipo_movimiento', 'tipo_movimiento', { unique: false });
+                    movementsStore.createIndex('fecha', 'fecha', { unique: false });
                 }
 
                 // Migration from v1 to v2
@@ -873,6 +940,589 @@ class DatabaseManager {
     }
 
     // ========================================
+    // INSTALLMENTS METHODS
+    // ========================================
+
+    /**
+     * Get all installments
+     */
+    async getAllInstallments() {
+        const transaction = this.db.transaction(['installments'], 'readonly');
+        const store = transaction.objectStore('installments');
+
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get active installments
+     */
+    async getActiveInstallments() {
+        const allInstallments = await this.getAllInstallments();
+        return allInstallments.filter(inst => inst.activo);
+    }
+
+    /**
+     * Get installment by ID
+     */
+    async getInstallmentById(id) {
+        const transaction = this.db.transaction(['installments'], 'readonly');
+        const store = transaction.objectStore('installments');
+
+        return new Promise((resolve, reject) => {
+            const request = store.get(id);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Create installment
+     */
+    async createInstallment(installmentData) {
+        const transaction = this.db.transaction(['installments', 'installment_payments'], 'readwrite');
+        const installmentStore = transaction.objectStore('installments');
+        const paymentsStore = transaction.objectStore('installment_payments');
+
+        const installment = {
+            ...installmentData,
+            fecha_creacion: new Date().toISOString(),
+            fecha_actualizacion: null
+        };
+
+        return new Promise((resolve, reject) => {
+            const request = installmentStore.add(installment);
+            request.onsuccess = () => {
+                const installmentId = request.result;
+                installment.id = installmentId;
+
+                // Create payment records for each installment
+                const totalCuotas = installmentData.total_cuotas;
+                const montoCuota = parseFloat(installmentData.monto_cuota);
+                let fechaPago = new Date(installmentData.fecha_inicio);
+
+                for (let i = 1; i <= totalCuotas; i++) {
+                    const payment = {
+                        installment_id: installmentId,
+                        numero_cuota: i,
+                        monto: montoCuota,
+                        fecha_vencimiento: fechaPago.toISOString().split('T')[0],
+                        pagado: false,
+                        fecha_pago: null
+                    };
+                    paymentsStore.add(payment);
+
+                    // Increment date based on frequency
+                    if (installmentData.periodicidad === 'mensual') {
+                        fechaPago.setMonth(fechaPago.getMonth() + 1);
+                    } else if (installmentData.periodicidad === 'quincenal') {
+                        fechaPago.setDate(fechaPago.getDate() + 15);
+                    }
+                }
+
+                resolve(installment);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Update installment
+     */
+    async updateInstallment(id, installmentData) {
+        const transaction = this.db.transaction(['installments'], 'readwrite');
+        const store = transaction.objectStore('installments');
+
+        return new Promise((resolve, reject) => {
+            const getRequest = store.get(id);
+
+            getRequest.onsuccess = () => {
+                const installment = getRequest.result;
+                if (!installment) {
+                    reject(new Error('Installment not found'));
+                    return;
+                }
+
+                const updatedInstallment = {
+                    ...installment,
+                    ...installmentData,
+                    id: id,
+                    fecha_actualizacion: new Date().toISOString()
+                };
+
+                const updateRequest = store.put(updatedInstallment);
+                updateRequest.onsuccess = () => resolve(updatedInstallment);
+                updateRequest.onerror = () => reject(updateRequest.error);
+            };
+
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+
+    /**
+     * Delete installment (and its payments)
+     */
+    async deleteInstallment(id) {
+        const transaction = this.db.transaction(['installments', 'installment_payments'], 'readwrite');
+        const installmentStore = transaction.objectStore('installments');
+        const paymentsStore = transaction.objectStore('installment_payments');
+        const paymentsIndex = paymentsStore.index('installment_id');
+
+        return new Promise((resolve, reject) => {
+            // Delete installment
+            const deleteInstRequest = installmentStore.delete(id);
+
+            deleteInstRequest.onsuccess = () => {
+                // Delete all payment records for this installment
+                const paymentsRequest = paymentsIndex.getAllKeys(id);
+                paymentsRequest.onsuccess = () => {
+                    const paymentKeys = paymentsRequest.result;
+                    paymentKeys.forEach(key => paymentsStore.delete(key));
+                    resolve(true);
+                };
+                paymentsRequest.onerror = () => reject(paymentsRequest.error);
+            };
+
+            deleteInstRequest.onerror = () => reject(deleteInstRequest.error);
+        });
+    }
+
+    /**
+     * Toggle installment active status
+     */
+    async toggleInstallmentActive(id) {
+        const installment = await this.getInstallmentById(id);
+        if (!installment) {
+            throw new Error('Installment not found');
+        }
+
+        return this.updateInstallment(id, {
+            activo: !installment.activo
+        });
+    }
+
+    /**
+     * Get payments for an installment
+     */
+    async getInstallmentPayments(installmentId) {
+        const transaction = this.db.transaction(['installment_payments'], 'readonly');
+        const store = transaction.objectStore('installment_payments');
+        const index = store.index('installment_id');
+
+        return new Promise((resolve, reject) => {
+            const request = index.getAll(installmentId);
+            request.onsuccess = () => {
+                const payments = request.result;
+                // Sort by installment number
+                payments.sort((a, b) => a.numero_cuota - b.numero_cuota);
+                resolve(payments);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Mark an installment payment as paid
+     */
+    async markPaymentAsPaid(paymentId, fechaPago = null) {
+        const transaction = this.db.transaction(['installment_payments'], 'readwrite');
+        const store = transaction.objectStore('installment_payments');
+
+        return new Promise((resolve, reject) => {
+            const getRequest = store.get(paymentId);
+
+            getRequest.onsuccess = () => {
+                const payment = getRequest.result;
+                if (!payment) {
+                    reject(new Error('Payment not found'));
+                    return;
+                }
+
+                payment.pagado = true;
+                payment.fecha_pago = fechaPago || new Date().toISOString().split('T')[0];
+
+                const updateRequest = store.put(payment);
+                updateRequest.onsuccess = () => resolve(payment);
+                updateRequest.onerror = () => reject(updateRequest.error);
+            };
+
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+
+    /**
+     * Mark an installment payment as unpaid
+     */
+    async markPaymentAsUnpaid(paymentId) {
+        const transaction = this.db.transaction(['installment_payments'], 'readwrite');
+        const store = transaction.objectStore('installment_payments');
+
+        return new Promise((resolve, reject) => {
+            const getRequest = store.get(paymentId);
+
+            getRequest.onsuccess = () => {
+                const payment = getRequest.result;
+                if (!payment) {
+                    reject(new Error('Payment not found'));
+                    return;
+                }
+
+                payment.pagado = false;
+                payment.fecha_pago = null;
+
+                const updateRequest = store.put(payment);
+                updateRequest.onsuccess = () => resolve(payment);
+                updateRequest.onerror = () => reject(updateRequest.error);
+            };
+
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+
+    /**
+     * Get installment categories
+     */
+    async getInstallmentCategories() {
+        const transaction = this.db.transaction(['installment_categories'], 'readonly');
+        const store = transaction.objectStore('installment_categories');
+
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get active installment categories
+     */
+    async getActiveInstallmentCategories() {
+        const allCategories = await this.getInstallmentCategories();
+        return allCategories.filter(cat => cat.activo);
+    }
+
+    /**
+     * Get installments summary
+     */
+    async getInstallmentsSummary() {
+        const activeInstallments = await this.getActiveInstallments();
+        const today = new Date();
+        const currentMonth = today.getMonth() + 1;
+        const currentYear = today.getFullYear();
+
+        let monthlyTotal = 0;
+        let pendingCount = 0;
+        let totalRemaining = 0;
+
+        for (const installment of activeInstallments) {
+            const payments = await this.getInstallmentPayments(installment.id);
+
+            // Count pending payments
+            const pending = payments.filter(p => !p.pagado);
+            pendingCount += pending.length;
+
+            // Calculate total remaining
+            totalRemaining += pending.reduce((sum, p) => sum + parseFloat(p.monto), 0);
+
+            // Calculate this month's payment
+            const thisMonthPayment = payments.find(p => {
+                const paymentDate = new Date(p.fecha_vencimiento);
+                return paymentDate.getMonth() + 1 === currentMonth &&
+                       paymentDate.getFullYear() === currentYear;
+            });
+
+            if (thisMonthPayment && !thisMonthPayment.pagado) {
+                monthlyTotal += parseFloat(thisMonthPayment.monto);
+            }
+        }
+
+        return {
+            monthlyTotal,
+            pendingCount,
+            totalRemaining,
+            count: activeInstallments.length
+        };
+    }
+
+    // ========================================
+    // SAVINGS METHODS
+    // ========================================
+
+    /**
+     * Get all savings
+     */
+    async getAllSavings() {
+        const transaction = this.db.transaction(['savings'], 'readonly');
+        const store = transaction.objectStore('savings');
+
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get active savings
+     */
+    async getActiveSavings() {
+        const allSavings = await this.getAllSavings();
+        return allSavings.filter(saving => saving.activo);
+    }
+
+    /**
+     * Get saving by ID
+     */
+    async getSavingById(id) {
+        const transaction = this.db.transaction(['savings'], 'readonly');
+        const store = transaction.objectStore('savings');
+
+        return new Promise((resolve, reject) => {
+            const request = store.get(id);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Create saving
+     */
+    async createSaving(savingData) {
+        const transaction = this.db.transaction(['savings'], 'readwrite');
+        const store = transaction.objectStore('savings');
+
+        const saving = {
+            ...savingData,
+            fecha_creacion: new Date().toISOString(),
+            fecha_actualizacion: new Date().toISOString()
+        };
+
+        return new Promise((resolve, reject) => {
+            const request = store.add(saving);
+            request.onsuccess = () => {
+                saving.id = request.result;
+                resolve(saving);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Update saving
+     */
+    async updateSaving(id, savingData) {
+        const transaction = this.db.transaction(['savings'], 'readwrite');
+        const store = transaction.objectStore('savings');
+
+        return new Promise((resolve, reject) => {
+            const getRequest = store.get(id);
+
+            getRequest.onsuccess = () => {
+                const saving = getRequest.result;
+                if (!saving) {
+                    reject(new Error('Saving not found'));
+                    return;
+                }
+
+                const updatedSaving = {
+                    ...saving,
+                    ...savingData,
+                    id: id,
+                    fecha_actualizacion: new Date().toISOString()
+                };
+
+                const updateRequest = store.put(updatedSaving);
+                updateRequest.onsuccess = () => resolve(updatedSaving);
+                updateRequest.onerror = () => reject(updateRequest.error);
+            };
+
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+
+    /**
+     * Delete saving (and its movements)
+     */
+    async deleteSaving(id) {
+        const transaction = this.db.transaction(['savings', 'saving_movements'], 'readwrite');
+        const savingsStore = transaction.objectStore('savings');
+        const movementsStore = transaction.objectStore('saving_movements');
+        const movementsIndex = movementsStore.index('saving_id');
+
+        return new Promise((resolve, reject) => {
+            // Delete saving
+            const deleteSavingRequest = savingsStore.delete(id);
+
+            deleteSavingRequest.onsuccess = () => {
+                // Delete all movements for this saving
+                const movementsRequest = movementsIndex.getAllKeys(id);
+                movementsRequest.onsuccess = () => {
+                    const movementKeys = movementsRequest.result;
+                    movementKeys.forEach(key => movementsStore.delete(key));
+                    resolve(true);
+                };
+                movementsRequest.onerror = () => reject(movementsRequest.error);
+            };
+
+            deleteSavingRequest.onerror = () => reject(deleteSavingRequest.error);
+        });
+    }
+
+    /**
+     * Toggle saving active status
+     */
+    async toggleSavingActive(id) {
+        const saving = await this.getSavingById(id);
+        if (!saving) {
+            throw new Error('Saving not found');
+        }
+
+        return this.updateSaving(id, {
+            activo: !saving.activo
+        });
+    }
+
+    /**
+     * Add money to saving (creates movement)
+     */
+    async addToSaving(savingId, monto, descripcion = null) {
+        const saving = await this.getSavingById(savingId);
+        if (!saving) {
+            throw new Error('Saving not found');
+        }
+
+        const transaction = this.db.transaction(['savings', 'saving_movements'], 'readwrite');
+        const savingsStore = transaction.objectStore('savings');
+        const movementsStore = transaction.objectStore('saving_movements');
+
+        return new Promise((resolve, reject) => {
+            // Create movement
+            const movement = {
+                saving_id: savingId,
+                tipo_movimiento: 'ingreso',
+                monto: parseFloat(monto),
+                descripcion: descripcion || `Ingreso de ${this._formatCurrency(monto)}`,
+                fecha: new Date().toISOString()
+            };
+
+            const addMovementRequest = movementsStore.add(movement);
+
+            addMovementRequest.onsuccess = () => {
+                // Update saving monto
+                const newMonto = parseFloat(saving.monto) + parseFloat(monto);
+                saving.monto = newMonto;
+                saving.fecha_actualizacion = new Date().toISOString();
+
+                const updateSavingRequest = savingsStore.put(saving);
+                updateSavingRequest.onsuccess = () => resolve(saving);
+                updateSavingRequest.onerror = () => reject(updateSavingRequest.error);
+            };
+
+            addMovementRequest.onerror = () => reject(addMovementRequest.error);
+        });
+    }
+
+    /**
+     * Withdraw money from saving (creates movement)
+     */
+    async withdrawFromSaving(savingId, monto, descripcion = null) {
+        const saving = await this.getSavingById(savingId);
+        if (!saving) {
+            throw new Error('Saving not found');
+        }
+
+        const transaction = this.db.transaction(['savings', 'saving_movements'], 'readwrite');
+        const savingsStore = transaction.objectStore('savings');
+        const movementsStore = transaction.objectStore('saving_movements');
+
+        return new Promise((resolve, reject) => {
+            // Create movement
+            const movement = {
+                saving_id: savingId,
+                tipo_movimiento: 'egreso',
+                monto: parseFloat(monto),
+                descripcion: descripcion || `Retiro de ${this._formatCurrency(monto)}`,
+                fecha: new Date().toISOString()
+            };
+
+            const addMovementRequest = movementsStore.add(movement);
+
+            addMovementRequest.onsuccess = () => {
+                // Update saving monto
+                const newMonto = parseFloat(saving.monto) - parseFloat(monto);
+                saving.monto = newMonto;
+                saving.fecha_actualizacion = new Date().toISOString();
+
+                const updateSavingRequest = savingsStore.put(saving);
+                updateSavingRequest.onsuccess = () => resolve(saving);
+                updateSavingRequest.onerror = () => reject(updateSavingRequest.error);
+            };
+
+            addMovementRequest.onerror = () => reject(addMovementRequest.error);
+        });
+    }
+
+    /**
+     * Get movements for a saving
+     */
+    async getSavingMovements(savingId) {
+        const transaction = this.db.transaction(['saving_movements'], 'readonly');
+        const store = transaction.objectStore('saving_movements');
+        const index = store.index('saving_id');
+
+        return new Promise((resolve, reject) => {
+            const request = index.getAll(savingId);
+            request.onsuccess = () => {
+                const movements = request.result;
+                // Sort by date descending
+                movements.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+                resolve(movements);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    /**
+     * Get savings summary
+     */
+    async getSavingsSummary() {
+        const activeSavings = await this.getActiveSavings();
+
+        let totalActivo = 0;
+        const byType = {};
+
+        activeSavings.forEach(saving => {
+            const monto = parseFloat(saving.monto) || 0;
+            totalActivo += monto;
+
+            if (!byType[saving.tipo]) {
+                byType[saving.tipo] = 0;
+            }
+            byType[saving.tipo] += monto;
+        });
+
+        return {
+            totalActivo,
+            count: activeSavings.length,
+            byType
+        };
+    }
+
+    /**
+     * Helper method to format currency (for movement descriptions)
+     */
+    _formatCurrency(amount) {
+        return new Intl.NumberFormat('es-AR', {
+            style: 'currency',
+            currency: 'ARS',
+            minimumFractionDigits: 2
+        }).format(amount);
+    }
+
+    // ========================================
     // UTILITY METHODS
     // ========================================
 
@@ -885,7 +1535,12 @@ class DatabaseManager {
             'expense_categories',
             'subscriptions',
             'subscription_categories',
-            'subscription_price_history'
+            'subscription_price_history',
+            'installments',
+            'installment_categories',
+            'installment_payments',
+            'savings',
+            'saving_movements'
         ];
 
         const transaction = this.db.transaction(storeNames, 'readwrite');

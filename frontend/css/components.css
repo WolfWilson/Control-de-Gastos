@@ -991,6 +991,22 @@
 }
 
 /* ========================================
+   INSTALLMENTS
+   ======================================== */
+
+.installment-item {
+    position: relative;
+}
+
+.installment-inactive {
+    opacity: 0.6;
+}
+
+.installment-inactive .expense-description {
+    text-decoration: line-through;
+}
+
+/* ========================================
    FORM ELEMENTS - CHECKBOX
    ======================================== */
 

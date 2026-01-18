@@ -313,30 +313,90 @@
 
             <!-- Installments Tab (Cuotas) -->
             <div id="installmentsTab" class="tab-content">
-                <div class="placeholder-content">
-                    <div class="placeholder-icon">
-                        <i class="fas fa-credit-card"></i>
+                <!-- Installment Summary Cards -->
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #6366F1;">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Este mes</span>
+                            <span class="summary-value" id="installmentsMonthlyTotal">$0.00</span>
+                        </div>
                     </div>
-                    <h2 class="placeholder-title">Cuotas</h2>
-                    <p class="placeholder-description">
-                        Próximamente: Gestión de pagos en cuotas.<br>
-                        Registra compras pagadas a plazos con o sin intereses, y controla el progreso de cada cuota.
-                    </p>
+
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #F59E0B;">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Pendientes</span>
+                            <span class="summary-value" id="installmentsPendingCount">0</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #10B981;">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Total Restante</span>
+                            <span class="summary-value" id="installmentsTotalRemaining">$0.00</span>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Active Installments -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-credit-card"></i> Cuotas activas</h2>
+                    </div>
+
+                    <div id="installmentsList" class="expense-list">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Cargando cuotas...
+                        </div>
+                    </div>
+                </section>
             </div>
 
             <!-- Savings Tab (Ahorros) -->
             <div id="savingsTab" class="tab-content">
-                <div class="placeholder-content">
-                    <div class="placeholder-icon">
-                        <i class="fas fa-piggy-bank"></i>
+                <!-- Savings Summary Card -->
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #10B981;">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Total ahorrado</span>
+                            <span class="summary-value" id="savingsTotalActive">$0.00</span>
+                        </div>
                     </div>
-                    <h2 class="placeholder-title">Ahorros</h2>
-                    <p class="placeholder-description">
-                        Próximamente: Seguimiento de ahorros.<br>
-                        Registra y acumula tus ahorros mes a mes para alcanzar tus metas financieras.
-                    </p>
+
+                    <div class="summary-card">
+                        <div class="summary-icon" style="background: #6366F1;">
+                            <i class="fas fa-piggy-bank"></i>
+                        </div>
+                        <div class="summary-info">
+                            <span class="summary-label">Cuentas activas</span>
+                            <span class="summary-value" id="savingsActiveCount">0</span>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Active Savings -->
+                <section class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-piggy-bank"></i> Mis Ahorros</h2>
+                    </div>
+
+                    <div id="savingsList" class="savings-list">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Cargando ahorros...
+                        </div>
+                    </div>
+                </section>
             </div>
 
             <!-- Expenses Tab -->
@@ -571,6 +631,276 @@
                     </button>
                     <button type="submit" class="btn btn-primary" id="saveSubscriptionBtn">
                         <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Installment Modal -->
+    <div id="installmentModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="installmentModalTitle">
+                    <i class="fas fa-plus-circle"></i> Nueva Cuota
+                </h2>
+                <button class="btn-close" id="closeInstallmentModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="installmentForm">
+                <input type="hidden" id="installmentId">
+
+                <div class="form-group">
+                    <label for="installmentNombre" class="form-label">
+                        <i class="fas fa-signature"></i> Nombre del producto/servicio *
+                    </label>
+                    <input type="text" id="installmentNombre" name="nombre" class="form-input" maxlength="255" required
+                        placeholder="Ej: Notebook Dell XPS">
+                </div>
+
+                <div class="form-group">
+                    <label for="installmentMontoTotal" class="form-label">
+                        <i class="fas fa-dollar-sign"></i> Monto total *
+                    </label>
+                    <input type="number" id="installmentMontoTotal" name="monto_total" class="form-input" step="0.01" min="0.01"
+                        required placeholder="0.00">
+                </div>
+
+                <div class="form-group">
+                    <label for="installmentTotalCuotas" class="form-label">
+                        <i class="fas fa-hashtag"></i> Cantidad de cuotas *
+                    </label>
+                    <input type="number" id="installmentTotalCuotas" name="total_cuotas" class="form-input" min="1" max="120"
+                        required placeholder="12">
+                </div>
+
+                <div class="form-group">
+                    <label for="installmentMontoCuota" class="form-label">
+                        <i class="fas fa-money-bill-wave"></i> Monto por cuota *
+                    </label>
+                    <input type="number" id="installmentMontoCuota" name="monto_cuota" class="form-input" step="0.01" min="0.01"
+                        required placeholder="0.00">
+                </div>
+
+                <div class="form-group">
+                    <label for="installmentCategoriaId" class="form-label">
+                        <i class="fas fa-tag"></i> Categoría *
+                    </label>
+                    <select id="installmentCategoriaId" name="categoria_id" class="form-select" required>
+                        <option value="">Selecciona una categoría</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="installmentPeriodicidad" class="form-label">
+                        <i class="fas fa-clock"></i> Periodicidad *
+                    </label>
+                    <select id="installmentPeriodicidad" name="periodicidad" class="form-select" required>
+                        <option value="mensual" selected>Mensual</option>
+                        <option value="quincenal">Quincenal</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="installmentFechaInicio" class="form-label">
+                        <i class="fas fa-calendar-plus"></i> Fecha de primera cuota *
+                    </label>
+                    <input type="date" id="installmentFechaInicio" name="fecha_inicio" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-toggle-on"></i> Estado
+                    </label>
+                    <div class="form-check">
+                        <input type="checkbox" id="installmentActivo" name="activo" class="form-checkbox" checked>
+                        <label for="installmentActivo" class="form-check-label">
+                            Cuota activa
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="installmentNotas" class="form-label">
+                        <i class="fas fa-sticky-note"></i> Notas
+                    </label>
+                    <textarea id="installmentNotas" name="notas" class="form-textarea"
+                        placeholder="Notas adicionales (opcional)"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelInstallmentBtn">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="saveInstallmentBtn">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Saving Modal -->
+    <div id="savingModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="savingModalTitle">
+                    <i class="fas fa-plus-circle"></i> Nuevo Ahorro
+                </h2>
+                <button class="btn-close" id="closeSavingModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="savingForm">
+                <input type="hidden" id="savingId">
+
+                <div class="form-group">
+                    <label for="savingNombre" class="form-label">
+                        <i class="fas fa-signature"></i> Nombre del ahorro *
+                    </label>
+                    <input type="text" id="savingNombre" name="nombre" class="form-input" maxlength="255" required
+                        placeholder="Ej: Ahorro Emergencia, Cuenta Dólares">
+                </div>
+
+                <div class="form-group">
+                    <label for="savingMonto" class="form-label">
+                        <i class="fas fa-dollar-sign"></i> Monto actual *
+                    </label>
+                    <input type="number" id="savingMonto" name="monto" class="form-input" step="0.01" min="0"
+                        required placeholder="0.00">
+                </div>
+
+                <div class="form-group">
+                    <label for="savingTipo" class="form-label">
+                        <i class="fas fa-tag"></i> Tipo de ahorro *
+                    </label>
+                    <select id="savingTipo" name="tipo" class="form-select" required>
+                        <option value="">Selecciona un tipo</option>
+                        <option value="plazo_fijo">Plazo Fijo Bancario</option>
+                        <option value="fondo_inversion">Fondo de Inversión</option>
+                        <option value="dolares">Dólares</option>
+                        <option value="dolar_mep">Dólar MEP</option>
+                        <option value="acciones">Acciones</option>
+                        <option value="cedear">Cedear</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-toggle-on"></i> Estado
+                    </label>
+                    <div class="form-check">
+                        <input type="checkbox" id="savingActivo" name="activo" class="form-checkbox" checked>
+                        <label for="savingActivo" class="form-check-label">
+                            Ahorro activo (suma al total)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="savingNotas" class="form-label">
+                        <i class="fas fa-sticky-note"></i> Notas
+                    </label>
+                    <textarea id="savingNotas" name="notas" class="form-textarea"
+                        placeholder="Notas adicionales (opcional)"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelSavingBtn">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="saveSavingBtn">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Action Modal: Add Money -->
+    <div id="addMoneyModal" class="modal-overlay hidden">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-plus-circle"></i> Ingresar Dinero
+                </h2>
+                <button class="btn-close" id="closeAddMoneyModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="addMoneyForm">
+                <input type="hidden" id="addMoneySavingId">
+
+                <div class="form-group">
+                    <label for="addMoneyAmount" class="form-label">
+                        <i class="fas fa-money-bill-wave"></i> Monto a ingresar *
+                    </label>
+                    <input type="number" id="addMoneyAmount" name="amount" class="form-input" step="0.01" min="0.01"
+                        required placeholder="0.00" autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="addMoneyDescription" class="form-label">
+                        <i class="fas fa-comment"></i> Descripción (opcional)
+                    </label>
+                    <input type="text" id="addMoneyDescription" name="description" class="form-input"
+                        placeholder="Ej: Ahorro del mes">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelAddMoneyBtn">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-check"></i> Ingresar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Action Modal: Withdraw Money -->
+    <div id="withdrawMoneyModal" class="modal-overlay hidden">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-minus-circle"></i> Sacar Dinero
+                </h2>
+                <button class="btn-close" id="closeWithdrawMoneyModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form id="withdrawMoneyForm">
+                <input type="hidden" id="withdrawMoneySavingId">
+
+                <div class="form-group">
+                    <label for="withdrawMoneyAmount" class="form-label">
+                        <i class="fas fa-money-bill-wave"></i> Monto a retirar *
+                    </label>
+                    <input type="number" id="withdrawMoneyAmount" name="amount" class="form-input" step="0.01" min="0.01"
+                        required placeholder="0.00" autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="withdrawMoneyDescription" class="form-label">
+                        <i class="fas fa-comment"></i> Descripción (opcional)
+                    </label>
+                    <input type="text" id="withdrawMoneyDescription" name="description" class="form-input"
+                        placeholder="Ej: Compra de...">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelWithdrawMoneyBtn">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-check"></i> Retirar
                     </button>
                 </div>
             </form>

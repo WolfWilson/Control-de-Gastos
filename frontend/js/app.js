@@ -7,10 +7,16 @@ class ExpenseApp {
     constructor() {
         this.expenses = [];
         this.subscriptions = [];
+        this.installments = [];
+        this.savings = [];
         this.expenseCategories = [];
         this.subscriptionCategories = [];
+        this.installmentCategories = [];
         this.currentEditExpenseId = null;
         this.currentEditSubscriptionId = null;
+        this.currentEditInstallmentId = null;
+        this.currentEditSavingId = null;
+        this.currentSavingId = null; // For quick actions (add/withdraw)
         this.categoryChart = null;
         this.subscriptionsCategoryChart = null;
         this.comparisonChart = null;
@@ -244,6 +250,32 @@ class ExpenseApp {
             subscriptionActivo: document.getElementById('subscriptionActivo'),
             subscriptionNotas: document.getElementById('subscriptionNotas'),
 
+            // Installments tab
+            installmentsMonthlyTotal: document.getElementById('installmentsMonthlyTotal'),
+            installmentsPendingCount: document.getElementById('installmentsPendingCount'),
+            installmentsTotalRemaining: document.getElementById('installmentsTotalRemaining'),
+            installmentsList: document.getElementById('installmentsList'),
+
+            // Installment Modal
+            installmentModal: document.getElementById('installmentModal'),
+            installmentModalTitle: document.getElementById('installmentModalTitle'),
+            closeInstallmentModalBtn: document.getElementById('closeInstallmentModalBtn'),
+            installmentForm: document.getElementById('installmentForm'),
+            cancelInstallmentBtn: document.getElementById('cancelInstallmentBtn'),
+            saveInstallmentBtn: document.getElementById('saveInstallmentBtn'),
+
+            // Installment Form fields
+            installmentId: document.getElementById('installmentId'),
+            installmentNombre: document.getElementById('installmentNombre'),
+            installmentMontoTotal: document.getElementById('installmentMontoTotal'),
+            installmentTotalCuotas: document.getElementById('installmentTotalCuotas'),
+            installmentMontoCuota: document.getElementById('installmentMontoCuota'),
+            installmentCategoriaId: document.getElementById('installmentCategoriaId'),
+            installmentPeriodicidad: document.getElementById('installmentPeriodicidad'),
+            installmentFechaInicio: document.getElementById('installmentFechaInicio'),
+            installmentActivo: document.getElementById('installmentActivo'),
+            installmentNotas: document.getElementById('installmentNotas'),
+
             // Charts
             categoryChart: document.getElementById('categoryChart'),
             subscriptionsCategoryChart: document.getElementById('subscriptionsCategoryChart'),
@@ -255,6 +287,7 @@ class ExpenseApp {
         // Set default date to today
         this.elements.expenseFecha.value = getTodayDate();
         this.elements.subscriptionFechaInicio.value = getTodayDate();
+        this.elements.installmentFechaInicio.value = getTodayDate();
     }
 
     /**
@@ -283,6 +316,20 @@ class ExpenseApp {
             }
         });
         this.elements.subscriptionForm.addEventListener('submit', (e) => this.handleSubscriptionSubmit(e));
+
+        // Installment Modal
+        this.elements.closeInstallmentModalBtn.addEventListener('click', () => this.closeInstallmentModal());
+        this.elements.cancelInstallmentBtn.addEventListener('click', () => this.closeInstallmentModal());
+        this.elements.installmentModal.addEventListener('click', (e) => {
+            if (e.target === this.elements.installmentModal) {
+                this.closeInstallmentModal();
+            }
+        });
+        this.elements.installmentForm.addEventListener('submit', (e) => this.handleInstallmentSubmit(e));
+
+        // Auto-calculate installment amount when changing total or cuotas
+        this.elements.installmentMontoTotal.addEventListener('input', () => this.calculateInstallmentAmount());
+        this.elements.installmentTotalCuotas.addEventListener('input', () => this.calculateInstallmentAmount());
 
         // Month filter
         this.elements.monthFilter.addEventListener('change', () => this.filterExpensesByMonth());
@@ -351,6 +398,8 @@ class ExpenseApp {
         // Load tab-specific data
         if (tabName === 'subscriptions') {
             await this.loadSubscriptions();
+        } else if (tabName === 'installments') {
+            await this.loadInstallments();
         } else if (tabName === 'expenses') {
             await this.loadAllExpenses();
             this.populateMonthFilter();
@@ -368,6 +417,9 @@ class ExpenseApp {
         if (this.currentTab === 'subscriptions') {
             icon.className = 'fas fa-sync-alt';
             this.elements.addBtn.title = 'Agregar suscripción';
+        } else if (this.currentTab === 'installments') {
+            icon.className = 'fas fa-credit-card';
+            this.elements.addBtn.title = 'Agregar cuota';
         } else {
             icon.className = 'fas fa-plus';
             this.elements.addBtn.title = 'Agregar gasto';
@@ -380,6 +432,8 @@ class ExpenseApp {
     handleFABClick() {
         if (this.currentTab === 'subscriptions') {
             this.openSubscriptionModal();
+        } else if (this.currentTab === 'installments') {
+            this.openInstallmentModal();
         } else {
             this.openExpenseModal();
         }
@@ -392,8 +446,10 @@ class ExpenseApp {
         try {
             this.expenseCategories = await db.getActiveExpenseCategories();
             this.subscriptionCategories = await db.getActiveSubscriptionCategories();
+            this.installmentCategories = await db.getActiveInstallmentCategories();
             this.renderExpenseCategoriesSelect();
             this.renderSubscriptionCategoriesSelect();
+            this.renderInstallmentCategoriesSelect();
         } catch (error) {
             console.error('Error loading categories:', error);
             showError('Error al cargar las categorías');
@@ -426,6 +482,21 @@ class ExpenseApp {
             const option = document.createElement('option');
             option.value = category.id;
             // For Font Awesome icons, just show name
+            option.textContent = category.nombre;
+            select.appendChild(option);
+        });
+    }
+
+    /**
+     * Render installment categories in select dropdown
+     */
+    renderInstallmentCategoriesSelect() {
+        const select = this.elements.installmentCategoriaId;
+        select.innerHTML = '<option value="">Selecciona una categoría</option>';
+
+        this.installmentCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
             option.textContent = category.nombre;
             select.appendChild(option);
         });
@@ -901,6 +972,250 @@ class ExpenseApp {
         } catch (error) {
             console.error('Error deleting subscription:', error);
             showError('Error al eliminar la suscripción');
+        }
+    }
+
+    // ========================================
+    // INSTALLMENT MODAL METHODS
+    // ========================================
+
+    /**
+     * Load installments
+     */
+    async loadInstallments() {
+        try {
+            this.installments = await db.getAllInstallments();
+
+            // Update summary cards
+            const summary = await db.getInstallmentsSummary();
+            this.elements.installmentsMonthlyTotal.textContent = formatCurrency(summary.monthlyTotal);
+            this.elements.installmentsPendingCount.textContent = summary.pendingCount;
+            this.elements.installmentsTotalRemaining.textContent = formatCurrency(summary.totalRemaining);
+
+            // Render installments list
+            this.renderInstallments(this.elements.installmentsList, this.installments);
+        } catch (error) {
+            console.error('Error loading installments:', error);
+            this.renderEmptyState(this.elements.installmentsList, 'cuotas');
+        }
+    }
+
+    /**
+     * Render installments list
+     */
+    renderInstallments(container, installments) {
+        if (installments.length === 0) {
+            this.renderEmptyState(container, 'cuotas');
+            return;
+        }
+
+        container.innerHTML = '';
+
+        installments.forEach(installment => {
+            const category = this.installmentCategories.find(c => c.id === installment.categoria_id);
+            const item = this.createInstallmentItem(installment, category);
+            container.appendChild(item);
+        });
+    }
+
+    /**
+     * Create installment list item element
+     */
+    createInstallmentItem(installment, category) {
+        const item = document.createElement('div');
+        item.className = 'expense-item installment-item';
+        item.dataset.installmentId = installment.id;
+
+        // Add class for inactive installments
+        if (!installment.activo) {
+            item.classList.add('installment-inactive');
+        }
+
+        // Calculate progress
+        const totalCuotas = installment.total_cuotas;
+        const cuotasPagadas = Math.floor(Math.random() * totalCuotas); // TODO: Get real paid count
+        const progreso = Math.round((cuotasPagadas / totalCuotas) * 100);
+
+        item.innerHTML = `
+            <div class="expense-info">
+                <div class="expense-description">
+                    ${installment.nombre}
+                    ${!installment.activo ? '<span class="badge badge-inactive">Inactiva</span>' : ''}
+                </div>
+                <div class="expense-meta">
+                    <span class="expense-category">
+                        <i class="${category ? category.icono : 'fas fa-question'} fa-sm"></i> ${category ? category.nombre : 'Sin categoría'}
+                    </span>
+                    <span><i class="fas fa-list-ol"></i> ${cuotasPagadas}/${totalCuotas} cuotas</span>
+                    <span><i class="fas fa-percent"></i> ${progreso}% completado</span>
+                </div>
+            </div>
+            <div class="expense-amount">
+                ${formatCurrency(installment.monto_cuota)}/${installment.periodicidad === 'quincenal' ? 'quinc' : 'mes'}
+                <div class="expense-amount-small">Total: ${formatCurrency(installment.monto_total)}</div>
+            </div>
+            <div class="expense-actions">
+                <button class="btn-icon ${installment.activo ? 'btn-success' : 'btn-secondary'}"
+                        data-action="toggle"
+                        title="${installment.activo ? 'Desactivar' : 'Activar'}">
+                    <i class="fas ${installment.activo ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+                </button>
+                <button class="btn-icon" data-action="edit" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-icon" data-action="delete" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+
+        // Add event listeners
+        const toggleBtn = item.querySelector('[data-action="toggle"]');
+        const editBtn = item.querySelector('[data-action="edit"]');
+        const deleteBtn = item.querySelector('[data-action="delete"]');
+
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleToggleInstallment(installment.id);
+        });
+
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.openInstallmentModal(installment);
+        });
+
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleDeleteInstallment(installment.id);
+        });
+
+        return item;
+    }
+
+    /**
+     * Open modal for add/edit installment
+     */
+    openInstallmentModal(installment = null) {
+        this.currentEditInstallmentId = installment ? installment.id : null;
+
+        if (installment) {
+            // Edit mode
+            this.elements.installmentModalTitle.innerHTML = '<i class="fas fa-edit"></i> Editar Cuota';
+            this.elements.installmentId.value = installment.id;
+            this.elements.installmentNombre.value = installment.nombre;
+            this.elements.installmentMontoTotal.value = installment.monto_total;
+            this.elements.installmentTotalCuotas.value = installment.total_cuotas;
+            this.elements.installmentMontoCuota.value = installment.monto_cuota;
+            this.elements.installmentCategoriaId.value = installment.categoria_id;
+            this.elements.installmentPeriodicidad.value = installment.periodicidad;
+            this.elements.installmentFechaInicio.value = installment.fecha_inicio || getTodayDate();
+            this.elements.installmentActivo.checked = installment.activo;
+            this.elements.installmentNotas.value = installment.notas || '';
+        } else {
+            // Create mode
+            this.elements.installmentModalTitle.innerHTML = '<i class="fas fa-plus-circle"></i> Nueva Cuota';
+            this.elements.installmentForm.reset();
+            this.elements.installmentFechaInicio.value = getTodayDate();
+            this.elements.installmentActivo.checked = true;
+            this.elements.installmentPeriodicidad.value = 'mensual';
+        }
+
+        this.elements.installmentModal.classList.remove('hidden');
+    }
+
+    /**
+     * Close installment modal
+     */
+    closeInstallmentModal() {
+        this.elements.installmentModal.classList.add('hidden');
+        this.elements.installmentForm.reset();
+        this.currentEditInstallmentId = null;
+    }
+
+    /**
+     * Calculate installment amount automatically
+     */
+    calculateInstallmentAmount() {
+        const montoTotal = parseFloat(this.elements.installmentMontoTotal.value) || 0;
+        const totalCuotas = parseInt(this.elements.installmentTotalCuotas.value) || 1;
+
+        if (montoTotal > 0 && totalCuotas > 0) {
+            const montoCuota = (montoTotal / totalCuotas).toFixed(2);
+            this.elements.installmentMontoCuota.value = montoCuota;
+        }
+    }
+
+    /**
+     * Handle installment form submission
+     */
+    async handleInstallmentSubmit(event) {
+        event.preventDefault();
+
+        const installmentData = {
+            nombre: this.elements.installmentNombre.value.trim(),
+            monto_total: parseFloat(this.elements.installmentMontoTotal.value),
+            total_cuotas: parseInt(this.elements.installmentTotalCuotas.value),
+            monto_cuota: parseFloat(this.elements.installmentMontoCuota.value),
+            categoria_id: parseInt(this.elements.installmentCategoriaId.value),
+            periodicidad: this.elements.installmentPeriodicidad.value,
+            fecha_inicio: this.elements.installmentFechaInicio.value || null,
+            activo: this.elements.installmentActivo.checked,
+            notas: this.elements.installmentNotas.value.trim() || null
+        };
+
+        try {
+            if (this.currentEditInstallmentId) {
+                // Update installment
+                await db.updateInstallment(this.currentEditInstallmentId, installmentData);
+                showSuccess('Cuota actualizada exitosamente');
+            } else {
+                // Create installment
+                await db.createInstallment(installmentData);
+                showSuccess('Cuota creada exitosamente');
+            }
+
+            this.closeInstallmentModal();
+            await this.switchTab(this.currentTab);
+        } catch (error) {
+            console.error('Error saving installment:', error);
+            showError('Error al guardar la cuota');
+        }
+    }
+
+    /**
+     * Handle installment toggle (active/inactive)
+     */
+    async handleToggleInstallment(installmentId) {
+        try {
+            await db.toggleInstallmentActive(installmentId);
+            showSuccess('Estado actualizado');
+            await this.switchTab(this.currentTab);
+        } catch (error) {
+            console.error('Error toggling installment:', error);
+            showError('Error al cambiar el estado');
+        }
+    }
+
+    /**
+     * Handle installment deletion
+     */
+    async handleDeleteInstallment(installmentId) {
+        const confirmed = await confirmDanger(
+            '¿Estás seguro de que quieres eliminar esta cuota? Se eliminará también el registro de pagos.',
+            'Eliminar Cuota'
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            await db.deleteInstallment(installmentId);
+            showSuccess('Cuota eliminada exitosamente');
+            await this.switchTab(this.currentTab);
+        } catch (error) {
+            console.error('Error deleting installment:', error);
+            showError('Error al eliminar la cuota');
         }
     }
 
