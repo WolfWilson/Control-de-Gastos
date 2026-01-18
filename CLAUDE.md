@@ -951,6 +951,23 @@ select:-webkit-autofill {
 - ✅ Hover effects on cards
 - ❌ **AVOID** shimmer effects on static icons (removed as it was too distracting)
 
+### Contextual FAB Button
+
+The Floating Action Button (FAB) changes its **icon and action** based on the current active tab:
+
+| Tab | Icon | Action | Method Called |
+|-----|------|--------|---------------|
+| Dashboard | `fa-plus` | Add expense | `openExpenseModal()` |
+| Gastos (Expenses) | `fa-plus` | Add expense | `openExpenseModal()` |
+| Suscripciones | `fa-sync-alt` | Add subscription | `openSubscriptionModal()` |
+| Cuotas (Installments) | `fa-credit-card` | Add installment | `openInstallmentModal()` |
+| Ahorros (Savings) | `fa-piggy-bank` | Add saving | `openSavingModal()` |
+| Estadísticas | `fa-plus` | Add expense | `openExpenseModal()` |
+
+**Implementation** (in `app.js`):
+- `updateFABIcon()`: Updates icon when switching tabs
+- `handleFABClick()`: Routes to correct modal based on `this.currentTab`
+
 ### Browser Compatibility Notes
 
 **Tested on**: Chrome, Firefox, Edge, Safari
