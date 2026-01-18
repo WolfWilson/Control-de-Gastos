@@ -11,6 +11,16 @@
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Gastos">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/assets/icons/icon-512.png">
 
     <!-- Google Fonts - Montserrat -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -664,24 +674,24 @@
                     <label for="installmentMontoTotal" class="form-label">
                         <i class="fas fa-dollar-sign"></i> Monto total *
                     </label>
-                    <input type="number" id="installmentMontoTotal" name="monto_total" class="form-input" step="0.01" min="0.01"
-                        required placeholder="0.00">
+                    <input type="number" id="installmentMontoTotal" name="monto_total" class="form-input" step="0.01"
+                        min="0.01" required placeholder="0.00">
                 </div>
 
                 <div class="form-group">
                     <label for="installmentTotalCuotas" class="form-label">
                         <i class="fas fa-hashtag"></i> Cantidad de cuotas *
                     </label>
-                    <input type="number" id="installmentTotalCuotas" name="total_cuotas" class="form-input" min="1" max="120"
-                        required placeholder="12">
+                    <input type="number" id="installmentTotalCuotas" name="total_cuotas" class="form-input" min="1"
+                        max="120" required placeholder="12">
                 </div>
 
                 <div class="form-group">
                     <label for="installmentMontoCuota" class="form-label">
                         <i class="fas fa-money-bill-wave"></i> Monto por cuota *
                     </label>
-                    <input type="number" id="installmentMontoCuota" name="monto_cuota" class="form-input" step="0.01" min="0.01"
-                        required placeholder="0.00">
+                    <input type="number" id="installmentMontoCuota" name="monto_cuota" class="form-input" step="0.01"
+                        min="0.01" required placeholder="0.00">
                 </div>
 
                 <div class="form-group">
@@ -769,8 +779,8 @@
                     <label for="savingMonto" class="form-label">
                         <i class="fas fa-dollar-sign"></i> Monto actual *
                     </label>
-                    <input type="number" id="savingMonto" name="monto" class="form-input" step="0.01" min="0"
-                        required placeholder="0.00">
+                    <input type="number" id="savingMonto" name="monto" class="form-input" step="0.01" min="0" required
+                        placeholder="0.00">
                 </div>
 
                 <div class="form-group">
@@ -883,8 +893,8 @@
                     <label for="withdrawMoneyAmount" class="form-label">
                         <i class="fas fa-money-bill-wave"></i> Monto a retirar *
                     </label>
-                    <input type="number" id="withdrawMoneyAmount" name="amount" class="form-input" step="0.01" min="0.01"
-                        required placeholder="0.00" autofocus>
+                    <input type="number" id="withdrawMoneyAmount" name="amount" class="form-input" step="0.01"
+                        min="0.01" required placeholder="0.00" autofocus>
                 </div>
 
                 <div class="form-group">
