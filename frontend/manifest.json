@@ -3,11 +3,15 @@
   "short_name": "Gastos",
   "description": "Aplicación PWA offline para control de gastos personales",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
   "background_color": "#F9FAFB",
   "theme_color": "#6366F1",
   "orientation": "portrait-primary",
-  "categories": ["finance", "productivity"],
+  "categories": [
+    "finance",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/assets/icons/icon-192.png",
