@@ -1,19 +1,31 @@
 // Service Worker - Complete offline support
-const CACHE_NAME = 'expense-tracker-v2.0';
-const STATIC_CACHE = 'static-v2.0';
-const DYNAMIC_CACHE = 'dynamic-v2.0';
+const CACHE_NAME = 'expense-tracker-v2.1';
+const STATIC_CACHE = 'static-v2.1';
+const DYNAMIC_CACHE = 'dynamic-v2.1';
 
 const urlsToCache = [
   '/',
   '/manifest.json',
+  // CSS
   '/css/variables.css',
   '/css/base.css',
   '/css/layout.css',
   '/css/components.css',
+  '/css/animations.css',
+  '/css/debug-contrast.css',
+  '/css/auth-tabs.css',
+  '/css/user-menu.css',
+  // JavaScript
   '/js/app.js',
   '/js/db.js',
   '/js/auth.js',
   '/js/utils.js',
+  '/js/data-backup.js',
+  '/js/confirm-dialog.js',
+  // PWA Icons
+  '/assets/icons/icon-192.png',
+  '/assets/icons/icon-512.png',
+  '/assets/icons/apple-touch-icon.png',
   // External resources
   'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
@@ -86,8 +98,10 @@ self.addEventListener('fetch', (event) => {
 function isStaticAsset(url) {
   return url.pathname.startsWith('/css/') ||
     url.pathname.startsWith('/js/') ||
+    url.pathname.startsWith('/assets/') ||
     url.pathname.endsWith('.html') ||
     url.pathname === '/' ||
+    url.pathname === '/manifest.json' ||
     url.href.includes('fonts.googleapis.com') ||
     url.href.includes('fontawesome') ||
     url.href.includes('chart.js');
