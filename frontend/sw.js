@@ -5,7 +5,6 @@ const DYNAMIC_CACHE = 'dynamic-v2.0';
 
 const urlsToCache = [
   '/',
-  '/index.html',
   '/manifest.json',
   '/css/variables.css',
   '/css/base.css',

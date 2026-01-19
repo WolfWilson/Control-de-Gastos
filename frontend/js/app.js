@@ -34,6 +34,9 @@ class ExpenseApp {
             // Initialize database
             await db.init();
 
+            // Register Service Worker early (make PWA installable immediately)
+            this.registerServiceWorker();
+
             // Check authentication
             if (auth.needsRegistration()) {
                 this.showRegistration();
@@ -180,7 +183,6 @@ class ExpenseApp {
         await this.loadDashboard();
         await this.loadExpenses();
         this.updateFABIcon();
-        this.registerServiceWorker();
     }
 
     /**
