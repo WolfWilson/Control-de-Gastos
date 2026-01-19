@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^powershell -Command \"iwr https://fly\\.io/install\\.ps1 -useb \\| iex\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
