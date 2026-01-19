@@ -1,7 +1,7 @@
 # fly.toml - Configuración para Fly.io
 # Cambia el nombre de la app por uno único
 
-app = "control-gastos-pwa"
+app = "gastos-wolf-wilson-2026"
 primary_region = "mia"  # Miami - Cambia según tu ubicación
 
 [build]
