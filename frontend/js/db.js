@@ -378,11 +378,12 @@ class DatabaseManager {
     }
 
     /**
-     * Create subscription
+     * Create subscription (with initial price history)
      */
     async createSubscription(subscriptionData) {
-        const transaction = this.db.transaction(['subscriptions'], 'readwrite');
+        const transaction = this.db.transaction(['subscriptions', 'subscription_price_history'], 'readwrite');
         const store = transaction.objectStore('subscriptions');
+        const historyStore = transaction.objectStore('subscription_price_history');
 
         const subscription = {
             ...subscriptionData,
@@ -394,6 +395,17 @@ class DatabaseManager {
             const request = store.add(subscription);
             request.onsuccess = () => {
                 subscription.id = request.result;
+                
+                // Create initial price history entry
+                const historyEntry = {
+                    subscription_id: subscription.id,
+                    monto: subscription.monto,
+                    fecha_inicio: subscription.fecha_inicio || new Date().toISOString().split('T')[0],
+                    fecha_fin: null, // null = vigente
+                    fecha_cambio: new Date().toISOString()
+                };
+                historyStore.add(historyEntry);
+                
                 resolve(subscription);
             };
             request.onerror = () => reject(request.error);
@@ -418,15 +430,36 @@ class DatabaseManager {
                     return;
                 }
 
-                // Check if monto changed - save to history
+                // Check if monto changed - update history
                 if (subscriptionData.monto && subscriptionData.monto !== subscription.monto) {
-                    const historyEntry = {
-                        subscription_id: id,
-                        monto_anterior: subscription.monto,
-                        monto_nuevo: subscriptionData.monto,
-                        fecha_cambio: new Date().toISOString()
+                    // Close current price period (set fecha_fin)
+                    const index = historyStore.index('subscription_id');
+                    const historyRequest = index.getAll(id);
+                    
+                    historyRequest.onsuccess = () => {
+                        const history = historyRequest.result;
+                        
+                        // Find current active price (fecha_fin = null)
+                        const currentPrice = history.find(h => h.fecha_fin === null);
+                        
+                        if (currentPrice) {
+                            // Close current period (yesterday)
+                            const yesterday = new Date();
+                            yesterday.setDate(yesterday.getDate() - 1);
+                            currentPrice.fecha_fin = yesterday.toISOString().split('T')[0];
+                            historyStore.put(currentPrice);
+                        }
+                        
+                        // Create new price entry starting today
+                        const newHistoryEntry = {
+                            subscription_id: id,
+                            monto: subscriptionData.monto,
+                            fecha_inicio: new Date().toISOString().split('T')[0],
+                            fecha_fin: null, // null = vigente
+                            fecha_cambio: new Date().toISOString()
+                        };
+                        historyStore.add(newHistoryEntry);
                     };
-                    historyStore.add(historyEntry);
                 }
 
                 const updatedSubscription = {
@@ -484,6 +517,29 @@ class DatabaseManager {
 
         return this.updateSubscription(id, {
             activo: !subscription.activo
+        });
+    }
+
+    /**
+     * Get price history for a subscription
+     * @param {number} subscriptionId - Subscription ID
+     * @returns {Promise<Array>} Array of price history entries
+     */
+    async getSubscriptionPriceHistory(subscriptionId) {
+        const transaction = this.db.transaction(['subscription_price_history'], 'readonly');
+        const store = transaction.objectStore('subscription_price_history');
+        const index = store.index('subscription_id');
+
+        return new Promise((resolve, reject) => {
+            const request = index.getAll(subscriptionId);
+            request.onsuccess = () => {
+                // Sort by fecha_inicio descending (most recent first)
+                const history = request.result.sort((a, b) => {
+                    return b.fecha_inicio.localeCompare(a.fecha_inicio);
+                });
+                resolve(history);
+            };
+            request.onerror = () => reject(request.error);
         });
     }
 
@@ -610,6 +666,53 @@ class DatabaseManager {
     // ========================================
 
     /**
+     * Get subscription price for a specific date from history
+     * @param {number} subscriptionId - Subscription ID
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {Promise<number>} Price at that date
+     */
+    async _getSubscriptionPriceForDate(subscriptionId, date) {
+        const transaction = this.db.transaction(['subscription_price_history'], 'readonly');
+        const store = transaction.objectStore('subscription_price_history');
+        const index = store.index('subscription_id');
+
+        return new Promise((resolve, reject) => {
+            const request = index.getAll(subscriptionId);
+            
+            request.onsuccess = () => {
+                const history = request.result;
+                
+                if (history.length === 0) {
+                    // No history, fallback to current monto from subscription
+                    const subTransaction = this.db.transaction(['subscriptions'], 'readonly');
+                    const subStore = subTransaction.objectStore('subscriptions');
+                    const subRequest = subStore.get(subscriptionId);
+                    
+                    subRequest.onsuccess = () => {
+                        resolve(parseFloat(subRequest.result?.monto || 0));
+                    };
+                    subRequest.onerror = () => resolve(0);
+                    return;
+                }
+                
+                // Find price valid for this date
+                const validPrice = history.find(h => {
+                    const inicio = h.fecha_inicio;
+                    const fin = h.fecha_fin;
+                    
+                    if (date < inicio) return false;
+                    if (fin === null) return true; // Current price
+                    return date <= fin;
+                });
+                
+                resolve(parseFloat(validPrice?.monto || 0));
+            };
+            
+            request.onerror = () => resolve(0);
+        });
+    }
+
+    /**
      * Check if subscription should be counted for a specific month
      * @param {Object} subscription - Subscription object
      * @param {number} year - Year to check
@@ -639,42 +742,52 @@ class DatabaseManager {
     }
 
     /**
-     * Calculate subscription cost for a specific month
+     * Calculate subscription cost for a specific month (using price history)
      * @param {Object} subscription - Subscription object
      * @param {number} year - Year
      * @param {number} month - Month (1-12)
-     * @returns {number} Cost for that month
+     * @returns {Promise<number>} Cost for that month
      */
-    _getSubscriptionCostForMonth(subscription, year, month) {
+    async _getSubscriptionCostForMonth(subscription, year, month) {
         if (!this._shouldCountSubscriptionForMonth(subscription, year, month)) {
             return 0;
         }
-        return parseFloat(subscription.monto);
+        
+        // Get price for mid-month (day 15)
+        const targetDate = `${year}-${String(month).padStart(2, '0')}-15`;
+        const price = await this._getSubscriptionPriceForDate(subscription.id, targetDate);
+        return price;
     }
 
     /**
-     * Calculate subscription cost for a year (only actual payments, no projections)
+     * Calculate subscription cost for a year (only actual payments, no projections) - WITH HISTORY
      * @param {Object} subscription - Subscription object
      * @param {number} year - Year
-     * @returns {number} Total cost for that year UP TO CURRENT MONTH
+     * @returns {Promise<number>} Total cost for that year UP TO CURRENT MONTH
      */
-    _getSubscriptionCostForYear(subscription, year) {
+    async _getSubscriptionCostForYear(subscription, year) {
         if (!subscription.activo) return 0;
 
         const today = new Date();
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth() + 1;
 
+        // Future years: 0 (no projections)
+        if (year > currentYear) return 0;
+
         if (!subscription.fecha_inicio) {
             // No start date: count only up to current month if current year
-            if (year > currentYear) return 0; // Future years: 0
-
             if (subscription.periodicidad === 'anual') {
-                return parseFloat(subscription.monto);
+                // Get price for mid-year
+                return await this._getSubscriptionPriceForDate(subscription.id, `${year}-06-15`);
             } else {
-                // Monthly: only up to current month
+                // Monthly: sum each month with historical prices
                 const monthsToCount = year === currentYear ? currentMonth : 12;
-                return parseFloat(subscription.monto) * monthsToCount;
+                let total = 0;
+                for (let m = 1; m <= monthsToCount; m++) {
+                    total += await this._getSubscriptionCostForMonth(subscription, year, m);
+                }
+                return total;
             }
         }
 
@@ -685,34 +798,23 @@ class DatabaseManager {
         // If subscription hasn't started this year, return 0
         if (year < startYear) return 0;
 
-        // Future years: 0 (no projections)
-        if (year > currentYear) return 0;
-
         if (subscription.periodicidad === 'anual') {
             // Annual: count once per year (only if payment month has passed)
             if (year === currentYear && currentMonth < startMonth) {
                 return 0; // Annual payment hasn't happened yet this year
             }
-            return parseFloat(subscription.monto);
+            // Get price for that year's payment month
+            return await this._getSubscriptionPriceForDate(subscription.id, `${year}-${String(startMonth).padStart(2, '0')}-15`);
         } else {
-            // Monthly: count only REAL payments (up to current month)
-            let monthsToCount = 0;
-
-            if (year === startYear && year === currentYear) {
-                // Started this year and we're in the same year: from start to current
-                monthsToCount = Math.max(0, currentMonth - startMonth + 1);
-            } else if (year === startYear) {
-                // Started this year, but we're in a future year: from start to December
-                monthsToCount = 13 - startMonth;
-            } else if (year === currentYear) {
-                // Started in a previous year, we're in current year: from Jan to current
-                monthsToCount = currentMonth;
-            } else {
-                // Year between start and current: full 12 months
-                monthsToCount = 12;
+            // Monthly: sum each month with historical prices
+            let firstMonth = (year === startYear) ? startMonth : 1;
+            let lastMonth = (year === currentYear) ? currentMonth : 12;
+            
+            let total = 0;
+            for (let m = firstMonth; m <= lastMonth; m++) {
+                total += await this._getSubscriptionCostForMonth(subscription, year, m);
             }
-
-            return parseFloat(subscription.monto) * monthsToCount;
+            return total;
         }
     }
 
@@ -728,10 +830,11 @@ class DatabaseManager {
         // Calculate expenses total
         const expensesTotal = expenses.reduce((sum, exp) => sum + parseFloat(exp.monto), 0);
 
-        // Calculate subscriptions total (only if they should be counted this month)
-        const subscriptionsTotal = activeSubscriptions.reduce((sum, sub) => {
-            return sum + this._getSubscriptionCostForMonth(sub, year, month);
-        }, 0);
+        // Calculate subscriptions total (only if they should be counted this month) - WITH HISTORY
+        let subscriptionsTotal = 0;
+        for (const sub of activeSubscriptions) {
+            subscriptionsTotal += await this._getSubscriptionCostForMonth(sub, year, month);
+        }
 
         const total = expensesTotal + subscriptionsTotal;
         const count = expenses.length;
@@ -748,9 +851,9 @@ class DatabaseManager {
             porCategoria[categoryName] += parseFloat(expense.monto);
         });
 
-        // Add subscriptions to categories (only if they should be counted this month)
-        activeSubscriptions.forEach(sub => {
-            const cost = this._getSubscriptionCostForMonth(sub, year, month);
+        // Add subscriptions to categories (only if they should be counted this month) - WITH HISTORY
+        for (const sub of activeSubscriptions) {
+            const cost = await this._getSubscriptionCostForMonth(sub, year, month);
             if (cost > 0) {
                 const category = subscriptionCategories.find(c => c.id === sub.categoria_id);
                 const categoryName = category ? category.nombre : 'Suscripciones';
@@ -760,7 +863,7 @@ class DatabaseManager {
                 }
                 porCategoria[categoryName] += cost;
             }
-        });
+        }
 
         return {
             year,
@@ -803,19 +906,21 @@ class DatabaseManager {
         const expensesTotal = expenses.reduce((sum, exp) => sum + parseFloat(exp.monto), 0);
 
         // Calculate yearly cost of subscriptions (actual payments in this year)
-        const subscriptionsTotal = activeSubscriptions.reduce((sum, sub) => {
-            return sum + this._getSubscriptionCostForYear(sub, year);
-        }, 0);
+        let subscriptionsTotal = 0;
+        for (const sub of activeSubscriptions) {
+            subscriptionsTotal += await this._getSubscriptionCostForYear(sub, year);
+        }
 
         const total = expensesTotal + subscriptionsTotal;
 
-        // Group by month (expenses + subscriptions for each month)
+        // Group by month (expenses + subscriptions for each month) - WITH HISTORY
         const byMonth = {};
         for (let i = 1; i <= 12; i++) {
             // Initialize with subscriptions cost for this month
-            const monthlySubCost = activeSubscriptions.reduce((sum, sub) => {
-                return sum + this._getSubscriptionCostForMonth(sub, year, i);
-            }, 0);
+            let monthlySubCost = 0;
+            for (const sub of activeSubscriptions) {
+                monthlySubCost += await this._getSubscriptionCostForMonth(sub, year, i);
+            }
             byMonth[i] = monthlySubCost;
         }
 
@@ -846,20 +951,22 @@ class DatabaseManager {
         const currentYear = today.getFullYear();
         const currentMonth = today.getMonth() + 1;
 
-        // Monthly total: subscriptions that apply this month
-        const monthlyTotal = activeSubscriptions.reduce((sum, sub) => {
-            return sum + this._getSubscriptionCostForMonth(sub, currentYear, currentMonth);
-        }, 0);
+        // Monthly total: subscriptions that apply this month - WITH HISTORY
+        let monthlyTotal = 0;
+        for (const sub of activeSubscriptions) {
+            monthlyTotal += await this._getSubscriptionCostForMonth(sub, currentYear, currentMonth);
+        }
 
         // Yearly total: actual cost for current year
-        const yearlyTotal = activeSubscriptions.reduce((sum, sub) => {
-            return sum + this._getSubscriptionCostForYear(sub, currentYear);
-        }, 0);
+        let yearlyTotal = 0;
+        for (const sub of activeSubscriptions) {
+            yearlyTotal += await this._getSubscriptionCostForYear(sub, currentYear);
+        }
 
-        // Group by category (using current month cost)
+        // Group by category (using current month cost) - WITH HISTORY
         const porCategoria = {};
-        activeSubscriptions.forEach(sub => {
-            const cost = this._getSubscriptionCostForMonth(sub, currentYear, currentMonth);
+        for (const sub of activeSubscriptions) {
+            const cost = await this._getSubscriptionCostForMonth(sub, currentYear, currentMonth);
             if (cost > 0) {
                 const category = subscriptionCategories.find(c => c.id === sub.categoria_id);
                 const categoryName = category ? category.nombre : 'Sin categoría';
@@ -869,7 +976,7 @@ class DatabaseManager {
                 }
                 porCategoria[categoryName] += cost;
             }
-        });
+        }
 
         return {
             monthlyTotal,
@@ -893,10 +1000,13 @@ class DatabaseManager {
         // Only calculate up to current month if it's current year
         const maxMonth = (year === currentYear) ? currentMonth : 12;
 
+        // WITH HISTORY: calculate each month with historical prices
         for (let i = 1; i <= maxMonth; i++) {
-            byMonth[i] = activeSubscriptions.reduce((sum, sub) => {
-                return sum + this._getSubscriptionCostForMonth(sub, year, i);
-            }, 0);
+            let monthTotal = 0;
+            for (const sub of activeSubscriptions) {
+                monthTotal += await this._getSubscriptionCostForMonth(sub, year, i);
+            }
+            byMonth[i] = monthTotal;
         }
 
         return {
@@ -925,9 +1035,12 @@ class DatabaseManager {
             const expensesTotal = expenses.reduce((sum, exp) => sum + parseFloat(exp.monto), 0);
 
             const activeSubscriptions = await this.getActiveSubscriptions();
-            const subscriptionsTotal = activeSubscriptions.reduce((sum, sub) => {
-                return sum + this._getSubscriptionCostForMonth(sub, year, i);
-            }, 0);
+            
+            // WITH HISTORY: calculate subscriptions cost with historical prices
+            let subscriptionsTotal = 0;
+            for (const sub of activeSubscriptions) {
+                subscriptionsTotal += await this._getSubscriptionCostForMonth(sub, year, i);
+            }
 
             comparison.byMonth[i] = {
                 expenses: expensesTotal,
