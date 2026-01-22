@@ -431,9 +431,16 @@ select option {
     border-bottom: 1px solid var(--glass-border);
     display: flex;
     position: sticky;
-    top: 65px;
+    top: var(--header-height);
     z-index: var(--z-tabs);
     box-shadow: 0 4px 12px rgba(6, 182, 212, 0.08);
+}
+
+/* Ajuste para móviles donde el header puede tener diferente altura */
+@media (max-width: 640px) {
+    .tabs-nav {
+        top: var(--header-height-mobile);
+    }
 }
 
 .tab-btn {

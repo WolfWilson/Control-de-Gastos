@@ -137,6 +137,10 @@
     --z-header: 50;
     --z-tabs: 40;
 
+    /* Layout heights */
+    --header-height: 57px;
+    --header-height-mobile: 49px;
+
     /* Breakpoints */
     --breakpoint-sm: 640px;
     --breakpoint-md: 768px;
